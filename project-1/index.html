@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steady Ground</title>
+<style>
+  @font-face {
+    font-family: 'ui-sans';
+    src: local('Avenir Next'), local('Segoe UI'), local('Helvetica Neue');
+  }
+
+  :root {
+    --bg: #EEF2EF;
+    --bg-2: #E4EAE5;
+    --surface: #FBFDFC;
+    --surface-2: #F3F7F4;
+    --ink: #223028;
+    --ink-soft: #4E5F56;
+    --ink-faint: #7C8B82;
+    --accent: #3E6B5C;
+    --accent-strong: #2C4E42;
+    --warm: #B97A6E;
+    --warm-soft: #E4C9C2;
+    --line: #D3DED8;
+    --focus: #3E6B5C;
+    --font-serif: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101613;
+      --bg-2: #151D19;
+      --surface: #182019;
+      --surface-2: #1E2921;
+      --ink: #E7EFE9;
+      --ink-soft: #AEC0B7;
+      --ink-faint: #7C9086;
+      --accent: #7FAE99;
+      --accent-strong: #A3C9B7;
+      --warm: #D89C8C;
+      --warm-soft: #4A342E;
+      --line: #2A362F;
+      --focus: #7FAE99;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #101613;
+    --bg-2: #151D19;
+    --surface: #182019;
+    --surface-2: #1E2921;
+    --ink: #E7EFE9;
+    --ink-soft: #AEC0B7;
+    --ink-faint: #7C9086;
+    --accent: #7FAE99;
+    --accent-strong: #A3C9B7;
+    --warm: #D89C8C;
+    --warm-soft: #4A342E;
+    --line: #2A362F;
+    --focus: #7FAE99;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::before {
+    width: 46vmax;
+    height: 46vmax;
+    top: -18vmax;
+    right: -14vmax;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+    animation: drift-a 34s ease-in-out infinite;
+  }
+
+  body::after {
+    width: 38vmax;
+    height: 38vmax;
+    bottom: -14vmax;
+    left: -10vmax;
+    background: radial-gradient(circle, var(--warm) 0%, transparent 70%);
+    animation: drift-b 40s ease-in-out infinite;
+  }
+
+  @keyframes drift-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-4vmax, 3vmax) scale(1.08); }
+  }
+
+  @keyframes drift-b {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(3vmax, -3vmax) scale(1.06); }
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    text-wrap: balance;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  a { color: var(--accent-strong); }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Nav */
+  nav.quicknav {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.quicknav ul {
+    list-style: none;
+    display: flex;
+    gap: 22px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    max-width: 640px;
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  nav.quicknav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  nav.quicknav a:hover { color: var(--accent-strong); }
+  nav.quicknav li.toggle-item {
+    margin-left: auto;
+  }
+  .theme-toggle {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--accent-strong); }
+
+  /* Hero */
+  .hero {
+    padding: 72px 0 48px;
+    text-align: center;
+  }
+  .eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 2.7rem);
+    line-height: 1.2;
+  }
+  .hero p.sub {
+    margin-top: 16px;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    max-width: 46ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  section {
+    padding: 56px 0;
+    border-top: 1px solid var(--line);
+  }
+  section > .kicker {
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  section > h2 {
+    font-size: 1.65rem;
+    margin-bottom: 10px;
+  }
+  section > p.lede {
+    color: var(--ink-soft);
+    max-width: 52ch;
+    margin: 0 0 32px;
+  }
+
+  /* Breathing */
+  .breathe-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .circle-holder {
+    position: relative;
+    width: min(52vw, 240px);
+    height: min(52vw, 240px);
+    display: grid;
+    place-items: center;
+  }
+  .circle-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+  }
+  .circle {
+    width: 62%;
+    height: 62%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, var(--surface-2), var(--accent) 78%);
+    box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px color-mix(in srgb, var(--accent) 55%, transparent);
+    animation: breathe 19s ease-in-out infinite;
+    transform-origin: center;
+  }
+  @keyframes breathe {
+    0%   { transform: scale(0.62); }
+    21.05% { transform: scale(1); }
+    57.9% { transform: scale(1); }
+    100% { transform: scale(0.62); }
+  }
+  .cue {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    color: var(--ink);
+    opacity: 0;
+  }
+  .cue-in {
+    animation: cue-in 19s ease-in-out infinite;
+  }
+  .cue-hold {
+    animation: cue-hold 19s ease-in-out infinite;
+  }
+  .cue-out {
+    animation: cue-out 19s ease-in-out infinite;
+  }
+  @keyframes cue-in {
+    0% { opacity: 1; }
+    18% { opacity: 1; }
+    21.05% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes cue-hold {
+    0% { opacity: 0; }
+    21.05% { opacity: 0; }
+    24% { opacity: 1; }
+    55% { opacity: 1; }
+    57.9% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes cue-out {
+    0% { opacity: 0; }
+    57.9% { opacity: 0; }
+    61% { opacity: 1; }
+    97% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .breathe-caption {
+    color: var(--ink-faint);
+    font-size: 0.92rem;
+    text-align: center;
+  }
+
+  .circle-holder { cursor: pointer; }
+  .circle-holder .circle-ring { transition: border-color 0.2s ease; }
+  .circle-holder:hover .circle-ring,
+  .circle-holder:focus-visible .circle-ring {
+    border-color: var(--accent);
+  }
+  .circle-holder.paused .circle,
+  .circle-holder.paused .cue-in,
+  .circle-holder.paused .cue-hold,
+  .circle-holder.paused .cue-out {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .circle { animation: none; transform: scale(0.85); }
+    .cue-in, .cue-hold, .cue-out { animation: none; opacity: 0; }
+    body::before, body::after { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* Grounding */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 16px;
+    align-items: baseline;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .step {
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .step:hover { border-color: var(--accent); }
+  .step.done { background: var(--surface-2); border-color: var(--accent); }
+  .step.done .n { color: var(--accent-strong); }
+  .step .n {
+    font-family: var(--font-serif);
+    font-size: 1.6rem;
+    color: var(--accent);
+    text-align: right;
+  }
+  .step .t strong { display: block; color: var(--ink); margin-bottom: 2px; }
+  .step .t span { color: var(--ink-soft); font-size: 0.92rem; }
+  .step.done .t strong::after { content: " ✓"; color: var(--accent-strong); }
+  .progress {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  /* Poems */
+  .poem {
+    padding: 34px 0;
+  }
+  .poem h3 {
+    font-size: 1.2rem;
+    font-style: italic;
+    color: var(--accent-strong);
+    margin-bottom: 14px;
+  }
+  .poem p {
+    font-family: var(--font-serif);
+    font-size: 1.12rem;
+    color: var(--ink);
+    white-space: pre-line;
+    margin: 0;
+  }
+  .wave {
+    display: block;
+    width: 100%;
+    height: 22px;
+    color: var(--line);
+  }
+
+  /* Footer / help */
+  .help {
+    background: var(--surface);
+    border-radius: 18px 18px 0 0;
+  }
+  .help h2 { color: var(--ink); }
+  .resource {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .resource:last-of-type { border-bottom: none; }
+  .resource strong { color: var(--ink); font-weight: 600; }
+  .resource span { color: var(--ink-soft); font-size: 0.92rem; }
+  .disclaimer {
+    margin-top: 28px;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+  }
+  footer.sign {
+    text-align: center;
+    padding: 30px 24px 50px;
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 480px) {
+    nav.quicknav ul { gap: 14px; font-size: 0.72rem; }
+    .step { grid-template-columns: 32px 1fr; }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<nav class="quicknav" aria-label="Quick navigation">
+  <ul>
+    <li><a href="#breathe">Breathe</a></li>
+    <li><a href="#ground">Ground</a></li>
+    <li><a href="#poems">Poems</a></li>
+    <li><a href="#help">Help</a></li>
+    <li class="toggle-item">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false" aria-label="Switch to dark theme" title="Toggle light / dark">🌙</button>
+    </li>
+  </ul>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Right now, in this moment</div>
+    <h1>You're safe. This will pass.</h1>
+    <p class="sub">Panic feels like an emergency. It rarely is one. Stay here a few minutes — breathe, notice the room around you, and read a few lines that aren't going anywhere.</p>
+  </header>
+
+  <section id="breathe" class="reveal">
+    <div class="kicker">One</div>
+    <h2>Breathe with the circle</h2>
+    <p class="lede">In for four. Hold for seven. Out for eight. Let the circle set the pace so you don't have to count.</p>
+    <div class="breathe-stage">
+      <div class="circle-holder" id="circleHolder" role="button" tabindex="0" aria-pressed="false" aria-label="Pause the breathing circle">
+        <div class="circle-ring"></div>
+        <div class="circle"></div>
+        <div class="cue cue-in">Breathe in</div>
+        <div class="cue cue-hold">Hold</div>
+        <div class="cue cue-out">Breathe out</div>
+      </div>
+      <p class="breathe-caption">If the motion is distracting, just breathe in for 4, hold for 7, out for 8 — three times. Tap the circle to pause it.</p>
+    </div>
+  </section>
+
+  <section id="ground" class="reveal">
+    <div class="kicker">Two</div>
+    <h2>Find five things</h2>
+    <p class="lede">Panic lives in the future — the next second, the next symptom. Grounding pulls you back into the room you're actually in. Tap each one as you notice it.</p>
+    <div class="steps" id="groundSteps">
+      <div class="step" role="button" tabindex="0" aria-pressed="false">
+        <div class="n">5</div>
+        <div class="t"><strong>Things you can see</strong><span>Look slowly. Name them, even in your head.</span></div>
+      </div>
+      <div class="step" role="button" tabindex="0" aria-pressed="false">
+        <div class="n">4</div>
+        <div class="t"><strong>Things you can touch</strong><span>Fabric, floor, your own hands.</span></div>
+      </div>
+      <div class="step" role="button" tabindex="0" aria-pressed="false">
+        <div class="n">3</div>
+        <div class="t"><strong>Things you can hear</strong><span>Even the quiet hum of a room counts.</span></div>
+      </div>
+      <div class="step" role="button" tabindex="0" aria-pressed="false">
+        <div class="n">2</div>
+        <div class="t"><strong>Things you can smell</strong><span>Or two things you like the smell of, if nothing's there.</span></div>
+      </div>
+      <div class="step" role="button" tabindex="0" aria-pressed="false">
+        <div class="n">1</div>
+        <div class="t"><strong>Thing you can taste</strong><span>A sip of water. The inside of your own mouth. Anything.</span></div>
+      </div>
+    </div>
+    <p class="progress" id="groundProgress">0 of 5 noticed</p>
+  </section>
+
+  <section id="poems" class="reveal">
+    <div class="kicker">Three</div>
+    <h2>Two passages from The Prophet</h2>
+    <p class="lede">Nothing to solve here. Just read — slowly, if you can. Words by Kahlil Gibran, from <em>The Prophet</em> (1923).</p>
+
+    <div class="poem">
+      <h3>On Pain</h3>
+      <p>Your pain is the breaking of the shell
+that encloses your understanding.
+Even as the stone of the fruit must break,
+that its heart may stand in the sun,
+so must you know pain.
+And could you keep your heart in wonder
+at the daily miracles of your life,
+your pain would not seem less wondrous than your joy;
+And you would accept the seasons of your heart,
+even as you have always accepted
+the seasons that pass over your fields.
+And you would watch with serenity
+through the winters of your grief.
+
+Much of your pain is self-chosen.
+It is the bitter potion by which
+the physician within you heals your sick self.
+Therefore trust the physician,
+and drink his remedy in silence and tranquillity:
+For his hand, though heavy and hard,
+is guided by the tender hand of the Unseen,
+And the cup he brings, though it burn your lips,
+has been fashioned of the clay which the Potter
+has moistened with His own sacred tears.</p>
+    </div>
+
+    <svg class="wave" viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 10 C 40 0, 60 20, 100 10 S 160 0, 200 10 S 260 20, 300 10" fill="none" stroke="currentColor" stroke-width="1"/>
+    </svg>
+
+    <div class="poem">
+      <h3>On Joy and Sorrow</h3>
+      <p>Your joy is your sorrow unmasked.
+And the selfsame well from which your laughter rises
+was oftentimes filled with your tears.
+And how else can it be?
+The deeper that sorrow carves into your being,
+the more joy you can contain.
+Is not the cup that holds your wine
+the very cup that was burned in the potter's oven?
+And is not the lute that soothes your spirit,
+the very wood that was hollowed with knives?
+When you are joyous, look deep into your heart
+and you shall find it is only that which has given you sorrow
+that is giving you joy.
+When you are sorrowful look again in your heart,
+and you shall see that in truth
+you are weeping for that which has been your delight.
+
+Some of you say, "Joy is greater than sorrow,"
+and others say, "Nay, sorrow is the greater."
+But I say unto you, they are inseparable.
+Together they come,
+and when one sits alone with you at your board,
+remember that the other is asleep upon your bed.
+Verily you are suspended like scales
+between your sorrow and your joy.
+Only when you are empty are you at standstill and balanced.
+When the treasure-keeper lifts you to weigh
+his gold and his silver,
+needs must your joy or your sorrow rise or fall.</p>
+    </div>
+  </section>
+
+  <section id="help" class="help reveal">
+    <div class="kicker">If you need more than this page</div>
+    <h2>You don't have to do this alone</h2>
+    <p class="lede">If panic keeps building, or you feel unsafe, reach out — a person, not just a page.</p>
+
+    <div class="resource">
+      <strong>988 Suicide &amp; Crisis Lifeline (US)</strong>
+      <span>Call or text 988 — 24/7</span>
+    </div>
+    <div class="resource">
+      <strong>Crisis Text Line</strong>
+      <span>Text HOME to 741741</span>
+    </div>
+    <div class="resource">
+      <strong>Emergency services</strong>
+      <span>Call 911 (US) if you feel physically unsafe</span>
+    </div>
+    <div class="resource">
+      <strong>Outside the US</strong>
+      <span>Search "crisis line" + your country, or contact local emergency services</span>
+    </div>
+
+    <p class="disclaimer">This page offers grounding techniques and comfort, not medical care. If panic attacks are frequent or severe, a doctor or therapist can help — you deserve more support than a webpage.</p>
+  </section>
+
+  <footer class="sign">You made it through reading this far. That counts.</footer>
+</div>
+
+<script>
+  (function () {
+    var toggle = document.getElementById('themeToggle');
+    var root = document.documentElement;
+
+    function apply(theme) {
+      root.setAttribute('data-theme', theme);
+      toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+      toggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    var stored = localStorage.getItem('steady-ground-theme');
+    if (stored === 'dark' || stored === 'light') apply(stored);
+
+    toggle.addEventListener('click', function () {
+      var isDark = root.getAttribute('data-theme') === 'dark' ||
+        (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var next = isDark ? 'light' : 'dark';
+      apply(next);
+      localStorage.setItem('steady-ground-theme', next);
+    });
+  })();
+
+  (function () {
+    var holder = document.getElementById('circleHolder');
+    function togglePause() {
+      var paused = holder.classList.toggle('paused');
+      holder.setAttribute('aria-pressed', String(paused));
+    }
+    holder.addEventListener('click', togglePause);
+    holder.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        togglePause();
+      }
+    });
+  })();
+
+  (function () {
+    var steps = document.querySelectorAll('#groundSteps .step');
+    var progress = document.getElementById('groundProgress');
+    function updateProgress() {
+      var done = document.querySelectorAll('#groundSteps .step.done').length;
+      progress.textContent = done + ' of ' + steps.length + ' noticed';
+    }
+    steps.forEach(function (step) {
+      function toggleDone() {
+        step.classList.toggle('done');
+        step.setAttribute('aria-pressed', String(step.classList.contains('done')));
+        updateProgress();
+      }
+      step.addEventListener('click', toggleDone);
+      step.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleDone();
+        }
+      });
+    });
+  })();
+
+  (function () {
+    var targets = document.querySelectorAll('.reveal');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      targets.forEach(function (t) { t.classList.add('in'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    targets.forEach(function (t) { observer.observe(t); });
+  })();
+</script>
+</body>
+</html>
