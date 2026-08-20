@@ -73,6 +73,40 @@
   p.tagline { color: #4a5f4a; margin-top: 0; font-style: italic; }
   ul { padding-left: 1.2rem; }
   a { color: #2d6a4f; }
+
+  /* Gently swaying trees along the bottom */
+  .treeline {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 4vw;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.85;
+  }
+
+  .tree {
+    width: clamp(30px, 6vw, 60px);
+    transform-origin: bottom center;
+    animation: sway 4s ease-in-out infinite;
+  }
+
+  .tree:nth-child(2) { animation-duration: 4.6s; animation-delay: -1s; }
+  .tree:nth-child(3) { animation-duration: 3.6s; animation-delay: -2s; }
+  .tree:nth-child(4) { animation-duration: 5s; animation-delay: -0.5s; }
+  .tree:nth-child(5) { animation-duration: 4.2s; animation-delay: -3s; }
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tree { animation: none; }
+  }
 </style>
 </head>
 <body>
@@ -92,5 +126,38 @@
       <li><a href="https://github.com/CieasCheligeman">GitHub</a></li>
     </ul>
   </main>
+
+  <div class="treeline" aria-hidden="true">
+    <svg class="tree" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="17" y="42" width="6" height="18" fill="#6b4a34"/>
+      <polygon points="20,0 2,26 38,26" fill="#4a8c5b"/>
+      <polygon points="20,14 4,38 36,38" fill="#5da06e"/>
+      <polygon points="20,26 6,50 34,50" fill="#6fb182"/>
+    </svg>
+    <svg class="tree" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="17" y="42" width="6" height="18" fill="#6b4a34"/>
+      <polygon points="20,0 2,26 38,26" fill="#4a8c5b"/>
+      <polygon points="20,14 4,38 36,38" fill="#5da06e"/>
+      <polygon points="20,26 6,50 34,50" fill="#6fb182"/>
+    </svg>
+    <svg class="tree" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="17" y="42" width="6" height="18" fill="#6b4a34"/>
+      <polygon points="20,0 2,26 38,26" fill="#4a8c5b"/>
+      <polygon points="20,14 4,38 36,38" fill="#5da06e"/>
+      <polygon points="20,26 6,50 34,50" fill="#6fb182"/>
+    </svg>
+    <svg class="tree" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="17" y="42" width="6" height="18" fill="#6b4a34"/>
+      <polygon points="20,0 2,26 38,26" fill="#4a8c5b"/>
+      <polygon points="20,14 4,38 36,38" fill="#5da06e"/>
+      <polygon points="20,26 6,50 34,50" fill="#6fb182"/>
+    </svg>
+    <svg class="tree" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="17" y="42" width="6" height="18" fill="#6b4a34"/>
+      <polygon points="20,0 2,26 38,26" fill="#4a8c5b"/>
+      <polygon points="20,14 4,38 36,38" fill="#5da06e"/>
+      <polygon points="20,26 6,50 34,50" fill="#6fb182"/>
+    </svg>
+  </div>
 </body>
 </html>
