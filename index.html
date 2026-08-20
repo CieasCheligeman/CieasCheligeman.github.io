@@ -5,34 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cieas C.</title>
 <style>
+  html, body {
+    min-height: 100vh;
+    margin: 0;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    color: #1a2e22;
+    position: relative;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #e8f3e6 0%, #d3e8d0 50%, #c3ddc0 100%);
+  }
+
+  /* Soft, slow-drifting glow blobs for a zen "breathing" effect */
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.55;
+    z-index: -1;
+    will-change: transform;
+  }
+
+  body::before {
+    width: 55vmax;
+    height: 55vmax;
+    top: -15vmax;
+    left: -15vmax;
+    background: radial-gradient(circle, #a8d8a0 0%, transparent 70%);
+    animation: drift1 26s ease-in-out infinite;
+  }
+
+  body::after {
+    width: 60vmax;
+    height: 60vmax;
+    bottom: -20vmax;
+    right: -15vmax;
+    background: radial-gradient(circle, #7fbf8f 0%, transparent 70%);
+    animation: drift2 32s ease-in-out infinite;
+  }
+
+  @keyframes drift1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(8vmax, 6vmax) scale(1.15); }
+  }
+
+  @keyframes drift2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-6vmax, -8vmax) scale(1.1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before, body::after { animation: none; }
+  }
+
+  main {
     max-width: 640px;
     margin: 80px auto;
     padding: 0 24px;
-    line-height: 1.6;
-    color: #1a1a1a;
   }
+
   h1 { font-size: 2rem; margin-bottom: 0.25rem; }
-  p.tagline { color: #666; margin-top: 0; }
+  p.tagline { color: #4a5f4a; margin-top: 0; font-style: italic; }
   ul { padding-left: 1.2rem; }
-  a { color: #0366d6; }
+  a { color: #2d6a4f; }
 </style>
 </head>
 <body>
-  <h1>Cieas C.</h1>
-  <p class="tagline">True words are often paradoxical - Laozi.</p>
+  <main>
+    <h1>Cieas C.</h1>
+    <p class="tagline">True words are often paradoxical - Laozi.</p>
 
-  <p>Assignment Submissions — 2026FA_CTEC 200 01: Innovation and Creative Coding.</p>
+    <p>Assignment Submissions — 2026FA_CTEC 200 01: Innovation and Creative Coding.</p>
 
-  <h2>Projects</h2>
-  <ul>
-    <li><a href="project-1/">Project 1</a></li>
-  </ul>
+    <h2>Projects</h2>
+    <ul>
+      <li><a href="project-1/">Project 1</a></li>
+    </ul>
 
-  <h2>Links</h2>
-  <ul>
-    <li><a href="https://github.com/CieasCheligeman">GitHub</a></li>
-  </ul>
+    <h2>Links</h2>
+    <ul>
+      <li><a href="https://github.com/CieasCheligeman">GitHub</a></li>
+    </ul>
+  </main>
 </body>
 </html>
