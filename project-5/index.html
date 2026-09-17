@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Mysterious Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#16130F; --surface:#201B15; --surface-raised:#2A2317; --border:#3A311F;
+    --text:#EDE3CD; --text-dim:#B8AC90; --text-faint:#7C725C;
+    --brass:#C9A14A; --brass-soft:rgba(201,161,74,0.16);
+    --oxblood:#C1554F; --oxblood-soft:rgba(193,85,79,0.16);
+    --teal:#5E9891; --teal-soft:rgba(94,152,145,0.16);
+    --slate:#9186BE; --slate-soft:rgba(145,134,190,0.18);
+    --shadow:rgba(0,0,0,0.5);
+    --ease-out:cubic-bezier(.16,1,.3,1);
+    --ease-inout:cubic-bezier(.65,0,.35,1);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#F1E9D3; --surface:#E8DEC2; --surface-raised:#DED0AC; --border:#C9B98C;
+      --text:#241E12; --text-dim:#5B5136; --text-faint:#8B7F5E;
+      --brass:#8A6420; --brass-soft:rgba(138,100,32,0.14);
+      --oxblood:#8A3A34; --oxblood-soft:rgba(138,58,52,0.14);
+      --teal:#33564F; --teal-soft:rgba(51,86,79,0.14);
+      --slate:#5A4E82; --slate-soft:rgba(90,78,130,0.14);
+      --shadow:rgba(90,70,30,0.18);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F1E9D3; --surface:#E8DEC2; --surface-raised:#DED0AC; --border:#C9B98C;
+    --text:#241E12; --text-dim:#5B5136; --text-faint:#8B7F5E;
+    --brass:#8A6420; --brass-soft:rgba(138,100,32,0.14);
+    --oxblood:#8A3A34; --oxblood-soft:rgba(138,58,52,0.14);
+    --teal:#33564F; --teal-soft:rgba(51,86,79,0.14);
+    --slate:#5A4E82; --slate-soft:rgba(90,78,130,0.14);
+    --shadow:rgba(90,70,30,0.18);
+  }
+  :root[data-theme="dark"]{
+    --bg:#16130F; --surface:#201B15; --surface-raised:#2A2317; --border:#3A311F;
+    --text:#EDE3CD; --text-dim:#B8AC90; --text-faint:#7C725C;
+    --brass:#C9A14A; --brass-soft:rgba(201,161,74,0.16);
+    --oxblood:#C1554F; --oxblood-soft:rgba(193,85,79,0.16);
+    --teal:#5E9891; --teal-soft:rgba(94,152,145,0.16);
+    --slate:#9186BE; --slate-soft:rgba(145,134,190,0.18);
+    --shadow:rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:0.01ms !important; animation-delay:0ms !important;
+      animation-iteration-count:1 !important; transition-duration:0.01ms !important;
+    }
+  }
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, var(--brass-soft), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Newsreader', Georgia, 'Times New Roman', serif;
+    padding-inline: clamp(16px, 6vw, 0px);
+    min-height:100vh;
+  }
+
+  .wrap{ max-width:640px; margin:0 auto; padding-block: clamp(48px, 9vh, 88px) 64px; position:relative; z-index:1; }
+
+  .kicker{
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--text-faint); margin:0 0 14px;
+  }
+
+  h1{
+    font-family:'Fraunces', Georgia, serif; font-optical-sizing:auto;
+    font-weight:600; font-size:clamp(2.1rem, 6vw, 3rem); line-height:1.05;
+    margin:0 0 20px; text-wrap:balance; color:var(--text);
+  }
+
+  .lede{
+    font-size:1.08rem; line-height:1.6; color:var(--text-dim);
+    max-width:52ch; margin:0 0 32px;
+  }
+
+  .seal-btn{
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:0.82rem; letter-spacing:0.06em; text-transform:uppercase;
+    background:var(--brass); color:var(--bg); border:none;
+    padding:16px 30px; border-radius:999px; cursor:pointer; position:relative;
+    box-shadow:0 6px 0 0 var(--shadow), 0 8px 18px var(--shadow);
+    transition:transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out), letter-spacing 0.6s var(--ease-out);
+  }
+  .seal-btn::after{
+    content:""; position:absolute; inset:-7px; border-radius:inherit;
+    border:1px solid var(--brass); opacity:0; pointer-events:none;
+    animation:halo 5.2s var(--ease-inout) infinite;
+  }
+  .seal-btn:hover{ transform:translateY(-2px); letter-spacing:0.1em; box-shadow:0 8px 0 0 var(--shadow), 0 14px 24px var(--shadow); }
+  .seal-btn:active{ transform:translateY(1px); box-shadow:0 3px 0 0 var(--shadow); transition-duration:0.12s; }
+  .seal-btn:focus-visible{ outline:2px solid var(--brass); outline-offset:4px; }
+
+  .fineprint{
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:0.72rem; color:var(--text-faint); margin-top:16px; letter-spacing:0.02em;
+  }
+
+  [hidden]{ display:none !important; }
+
+  /* ---- quiz screen ---- */
+  .progress-row{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin-bottom:14px; flex-wrap:wrap;
+  }
+  .progress-label{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.74rem;
+    letter-spacing:0.14em; color:var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .ticks{ display:flex; gap:6px; }
+  .tick{
+    width:8px; height:8px; border-radius:50%; background:var(--surface-raised);
+    border:1px solid var(--border);
+    transition:background 0.8s var(--ease-out), transform 0.8s var(--ease-out), border-color 0.8s var(--ease-out), box-shadow 0.8s var(--ease-out);
+  }
+  .tick.done{ background:var(--brass); border-color:var(--brass); }
+  .tick.current{ transform:scale(1.45); border-color:var(--brass); box-shadow:0 0 0 3px var(--brass-soft); }
+
+  .progress-line{ height:1px; background:var(--border); margin:0 0 36px; overflow:hidden; }
+  .progress-fill{
+    height:100%; background:var(--brass); transform-origin:left center;
+    transform:scaleX(var(--p, 0)); transition:transform 1.4s var(--ease-out);
+  }
+
+  .question-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    padding:clamp(24px, 5vw, 40px); position:relative;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px var(--shadow);
+  }
+  .axis-tag{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.68rem;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--brass); margin:0 0 14px;
+  }
+  #questionText{
+    font-family:'Fraunces', Georgia, serif; font-weight:500; font-style:italic;
+    font-size:clamp(1.3rem, 3.4vw, 1.65rem); line-height:1.32; margin:0 0 28px;
+    text-wrap:balance; color:var(--text);
+  }
+  .word{ display:inline-block; }
+  .answers{ display:flex; flex-direction:column; gap:10px; }
+
+  .plaque{
+    text-align:left; background:var(--surface-raised); border:1px solid var(--border);
+    border-radius:12px; padding:18px 18px 18px 16px; cursor:pointer;
+    display:flex; gap:12px; align-items:flex-start;
+    font-family:'Newsreader', Georgia, serif; font-size:1rem; line-height:1.45; color:var(--text);
+    transition:border-color 0.5s var(--ease-out), background 0.5s var(--ease-out),
+               transform 0.5s var(--ease-out), opacity 0.7s var(--ease-out), filter 0.7s var(--ease-out);
+    position:relative; overflow:hidden;
+  }
+  .plaque::before{
+    content:""; position:absolute; left:0; top:14px; bottom:14px; width:2px; border-radius:2px;
+    background:var(--brass); transform:scaleY(0); transition:transform 0.6s var(--ease-out);
+  }
+  .plaque > span{ position:relative; }
+  .plaque:hover{ border-color:var(--brass); transform:translateX(4px); }
+  .plaque:hover::before, .plaque.selected::before{ transform:scaleY(1); }
+  .plaque:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  .plaque.selected{ background:var(--brass-soft); border-color:var(--brass); }
+  .plaque-mark{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.75rem;
+    color:var(--brass); border:1px solid var(--brass); border-radius:50%;
+    width:22px; height:22px; min-width:22px; display:flex; align-items:center; justify-content:center;
+    margin-top:2px; transition:background 0.5s var(--ease-out), color 0.5s var(--ease-out), transform 0.6s var(--ease-out);
+  }
+  .plaque.selected .plaque-mark{ background:var(--brass); color:var(--bg); transform:scale(1.12); }
+  .answers.settling{ pointer-events:none; }
+  .answers.settling .plaque:not(.selected){ opacity:0.25; filter:blur(1.5px); transform:none; }
+  .ink{
+    position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%;
+    background:var(--brass); pointer-events:none;
+    animation:ink 1200ms var(--ease-out) forwards;
+  }
+
+  .text-link{
+    background:none; border:none; color:var(--text-faint); cursor:pointer;
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.76rem;
+    margin-top:22px; padding:6px 2px; letter-spacing:0.04em;
+    transition:color 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
+  }
+  .text-link:hover{ color:var(--brass); }
+  .text-link:disabled{ opacity:0.35; cursor:default; }
+  .text-link:disabled:hover{ color:var(--text-faint); }
+
+  /* ---- contemplation interlude ---- */
+  #contemplateScreen{
+    min-height:62vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:26px;
+  }
+  .breath{
+    display:inline-block; font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:0.74rem; text-transform:uppercase; color:var(--text-dim);
+    animation:breatheText 3.2s ease-in-out infinite;
+  }
+
+  /* ---- ensō ---- */
+  .enso{ display:block; width:84px; height:84px; margin:0 0 28px; color:var(--brass); overflow:visible; }
+  .enso-lg{ width:132px; height:132px; margin:0; }
+  .enso .stroke{ fill:none; stroke:currentColor; stroke-linecap:round; stroke-dasharray:1 1.01; stroke-dashoffset:1; }
+  .enso .spin{ transform-origin:50px 50px; animation:spin 80s linear infinite; }
+  .enso-lg .spin{ animation-duration:14s; }
+
+  /* ---- result screen ---- */
+  .medallion-wrap{ display:flex; justify-content:center; margin:8px 0 22px; perspective:700px; }
+  #dial{ width:min(240px, 64vw); height:min(240px, 64vw); overflow:visible; will-change:transform; }
+  .dial-glyph{
+    font-family:'Fraunces', Georgia, serif; font-style:italic; font-weight:500;
+  }
+  .dial-orbit{ transform-origin:100px 100px; animation:spin 140s linear infinite; }
+  .orbit-ring{ fill:none; stroke:var(--brass); stroke-opacity:.35; stroke-width:0.75; stroke-dasharray:1 1.01; stroke-dashoffset:1; }
+  .dial-tick{ stroke:var(--text-faint); stroke-width:1; stroke-linecap:round; opacity:0; }
+  .dial-tick.major{ stroke:var(--brass); stroke-width:1.4; }
+  .inner-ring{ fill:none; stroke:var(--brass); stroke-width:0.75; stroke-opacity:.35; }
+  #dialArcs{ transform-origin:100px 100px; animation:breathe 8s ease-in-out infinite; }
+  .dial-arc{ fill:none; stroke-width:13; stroke-linecap:round; stroke-dasharray:1 1.01; stroke-dashoffset:1; }
+  #dialGlyphText{ transform-origin:100px 100px; opacity:0; --d:1300ms; }
+
+  #mbtiCode{
+    font-family:'Fraunces', Georgia, serif; font-weight:600;
+    font-size:clamp(3rem, 12vw, 4.4rem); letter-spacing:0.02em;
+    text-align:center; margin:0; color:var(--text); line-height:1;
+  }
+  .letter{ display:inline-block; }
+  .mbti-caption{
+    text-align:center; font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:0.78rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--brass); margin:10px 0 40px;
+  }
+
+  .axis-bars{ display:flex; flex-direction:column; gap:16px; margin-bottom:48px; }
+  .axis-row{ display:flex; align-items:center; gap:12px; }
+  .pole{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.74rem;
+    color:var(--text-faint); width:12ch; letter-spacing:0.02em;
+    font-variant-numeric:tabular-nums;
+  }
+  .pole.pole-right{ text-align:right; }
+  .pole.active{ color:var(--text); font-weight:600; }
+  .track{
+    flex:1; height:10px; border-radius:999px; overflow:hidden; display:flex;
+    background:var(--surface-raised); border:1px solid var(--border);
+  }
+  .seg{ height:100%; }
+  .seg.fill{ position:relative; overflow:hidden; border-radius:999px; transform:scaleX(0); }
+  .seg.fill::after{
+    content:""; position:absolute; inset:0; transform:translateX(-110%);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+  }
+
+  .philosopher-plaque{
+    background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    padding:clamp(26px, 5vw, 42px); text-align:center; position:relative;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px var(--shadow);
+  }
+  .philosopher-plaque::before, .philosopher-plaque::after{
+    content:""; position:absolute; left:50%; transform:translateX(-50%);
+    width:64px; height:2px; background:var(--brass);
+  }
+  .philosopher-plaque::before{ top:18px; }
+  .philosopher-plaque::after{ bottom:18px; }
+  .glyph{
+    font-size:2.2rem; color:var(--brass); margin:6px 0 6px; line-height:1;
+  }
+  .float{ display:inline-block; animation:float 7s ease-in-out infinite; }
+  #philoName{
+    font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:1.7rem;
+    margin:0 0 4px; text-wrap:balance;
+  }
+  .philo-years{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.76rem;
+    color:var(--text-faint); margin:0 0 14px; font-variant-numeric:tabular-nums;
+  }
+  .philo-epithet{
+    font-style:italic; color:var(--brass); font-size:1rem; margin:0 0 22px;
+  }
+  blockquote{
+    font-family:'Fraunces', Georgia, serif; font-style:italic; font-weight:400;
+    font-size:1.2rem; line-height:1.5; color:var(--text); margin:0 auto 22px;
+    max-width:44ch; padding:0;
+  }
+  .philo-desc{
+    font-size:1rem; line-height:1.65; color:var(--text-dim);
+    max-width:52ch; margin:0 auto 36px; text-align:left;
+  }
+
+  /* ---- film recommendation ---- */
+  .film-section{ margin-top:38px; }
+  .film-kicker{ text-align:center; margin:0 0 16px; }
+  .film-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    padding:clamp(20px, 4vw, 30px); display:flex; gap:clamp(18px, 4vw, 28px);
+    align-items:center; flex-wrap:wrap; justify-content:center;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px var(--shadow);
+  }
+  .film-poster{
+    width:176px; aspect-ratio:2 / 3; flex:none; border-radius:8px;
+    padding:15px 14px 14px; display:flex; flex-direction:column;
+    color:var(--accent, var(--brass)); position:relative; overflow:hidden;
+    background:linear-gradient(168deg, var(--surface-raised), var(--bg) 85%);
+    border:1px solid var(--border); box-shadow:0 10px 24px var(--shadow);
+    transition:transform 0.9s var(--ease-out), box-shadow 0.9s var(--ease-out);
+  }
+  .film-card:hover .film-poster{ transform:translateY(-5px) rotate(-0.7deg); box-shadow:0 20px 36px var(--shadow); }
+  .film-poster::after{
+    content:""; position:absolute; inset:5px; border:1px solid currentColor;
+    border-radius:4px; opacity:0.25; pointer-events:none;
+  }
+  .film-art{ width:100%; flex:1; min-height:0; overflow:visible; }
+  .draws{
+    fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:1 1.01; stroke-dashoffset:1;
+  }
+  .fades{ fill:currentColor; opacity:0; }
+  .play .draws{ animation:draw 1500ms var(--ease-inout) both; animation-delay:var(--d, 0ms); }
+  .play .fades{ animation:fadeSoft 1300ms var(--ease-out) both; animation-delay:var(--d, 0ms); }
+  .poster-rule{ height:1px; background:currentColor; opacity:0.45; margin-bottom:9px; }
+  .poster-title{
+    font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:0.76rem;
+    letter-spacing:0.14em; text-transform:uppercase; line-height:1.35;
+    color:var(--text); margin:0 0 7px; text-wrap:balance;
+  }
+  .poster-credits{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.54rem;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin:0;
+  }
+  .film-text{ flex:1; min-width:210px; text-align:left; }
+  .film-text h4{
+    font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:1.2rem;
+    margin:0 0 5px; color:var(--text); text-wrap:balance;
+  }
+  .film-meta{
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:0.7rem;
+    letter-spacing:0.06em; color:var(--text-faint); margin:0 0 13px;
+  }
+  .film-note{ font-size:0.98rem; line-height:1.62; color:var(--text-dim); margin:0; }
+
+  .result-actions{ display:flex; justify-content:center; margin-top:40px; }
+
+  /* ================= motion ================= */
+  #ambient{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+  /* Entrances replay whenever a section gains .play. "backwards" fill keeps
+     hover transforms working once an entrance has finished. */
+  .play .rise, .play .word{
+    animation:rise 1100ms var(--ease-out) backwards; animation-delay:var(--d, 0ms);
+  }
+  .play .word{ animation-duration:900ms; }
+  .play .letter{ animation:letterIn 1300ms var(--ease-out) backwards; animation-delay:var(--d, 0ms); }
+  .play .enso .stroke{ animation:draw 2600ms var(--ease-inout) both; animation-delay:var(--d, 0ms); }
+  .play .enso-lg .stroke{ animation-duration:2200ms; }
+  .play .orbit-ring{ animation:draw 2000ms var(--ease-inout) both; }
+  .play .dial-tick{ animation:tickIn 900ms var(--ease-out) both; animation-delay:var(--d, 0ms); }
+  .play .dial-arc{ animation:draw 1400ms var(--ease-inout) both; animation-delay:var(--d, 0ms); }
+  .play #dialGlyphText{ animation:glyphIn 1600ms var(--ease-out) both; animation-delay:var(--d, 0ms); }
+  .play .seg.fill{ animation:grow 1500ms var(--ease-out) both; animation-delay:var(--d, 0ms); }
+  .play .seg.fill::after{ animation:sheen 1400ms var(--ease-inout) both; animation-delay:calc(var(--d, 0ms) + 1000ms); }
+  .play .philosopher-plaque::before, .play .philosopher-plaque::after{
+    animation:lineIn 1600ms var(--ease-out) both; animation-delay:calc(var(--d, 0ms) + 450ms);
+  }
+  .leaving{ animation:sink 440ms var(--ease-inout) forwards; pointer-events:none; }
+
+  @keyframes rise{
+    from{ opacity:0; transform:translateY(16px); filter:blur(8px); }
+    to{ opacity:1; transform:none; filter:blur(0); }
+  }
+  @keyframes sink{
+    from{ opacity:1; transform:none; filter:blur(0); }
+    to{ opacity:0; transform:translateY(-10px); filter:blur(6px); }
+  }
+  @keyframes letterIn{
+    from{ opacity:0; transform:translateY(22px) scale(0.92); filter:blur(12px); }
+    to{ opacity:1; transform:none; filter:blur(0); }
+  }
+  @keyframes draw{
+    0%{ stroke-dashoffset:1; opacity:0; }
+    8%{ opacity:1; }
+    100%{ stroke-dashoffset:var(--to, 0); opacity:1; }
+  }
+  @keyframes tickIn{ from{ opacity:0; } to{ opacity:0.6; } }
+  @keyframes fadeSoft{ from{ opacity:0; } to{ opacity:0.35; } }
+  @keyframes glyphIn{
+    from{ opacity:0; transform:scale(0.55) rotate(-24deg); }
+    to{ opacity:1; transform:none; }
+  }
+  @keyframes grow{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
+  @keyframes sheen{ from{ transform:translateX(-110%); } to{ transform:translateX(110%); } }
+  @keyframes lineIn{
+    from{ transform:translateX(-50%) scaleX(0); }
+    to{ transform:translateX(-50%) scaleX(1); }
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
+  @keyframes float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
+  @keyframes halo{
+    0%{ opacity:0; transform:scale(0.97); }
+    35%{ opacity:0.5; }
+    100%{ opacity:0; transform:scale(1.16, 1.4); }
+  }
+  @keyframes ink{
+    from{ transform:scale(0); opacity:0.32; }
+    to{ transform:scale(64); opacity:0; }
+  }
+  @keyframes breatheText{
+    0%,100%{ opacity:0.35; letter-spacing:0.2em; }
+    50%{ opacity:1; letter-spacing:0.32em; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="ambient" aria-hidden="true"></canvas>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="inkEdge" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <section id="introScreen">
+    <svg class="enso" viewBox="0 0 100 100" aria-hidden="true">
+      <g class="spin" filter="url(#inkEdge)">
+        <path class="stroke" pathLength="1" stroke-width="5" style="--to:.07; --d:150ms" d="M50 12 A38 38 0 0 1 50 88 A38 38 0 0 1 50 12"/>
+        <path class="stroke" pathLength="1" stroke-width="1.5" opacity=".5" style="--to:.24; --d:520ms" transform="rotate(16 50 50)" d="M50 17 A33 33 0 0 1 50 83 A33 33 0 0 1 50 17"/>
+      </g>
+    </svg>
+    <p class="kicker rise" style="--d:500ms">An Instrument of Unknown Purpose</p>
+    <h1 class="rise" style="--d:680ms">The Mysterious Test</h1>
+    <p class="lede rise" style="--d:880ms">Ten questions wait behind this door, and they are never quite the same twice. Some are small — what you do with an empty evening, how you pack a bag. Others are older than any of us. There are no right answers, only honest ones. Answer as you truly are, and the medallion will turn. What it reveals, and who is waiting on the other side, you will learn only at the end.</p>
+    <button class="seal-btn rise" style="--d:1100ms" id="beginBtn" type="button">Enter</button>
+    <p class="fineprint rise" style="--d:1260ms">~4 minutes · nothing you answer leaves this page</p>
+  </section>
+
+  <section id="quizScreen" hidden>
+    <div class="progress-row rise">
+      <span class="progress-label" id="progressLabel">QUESTION 01 / 10</span>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <div class="progress-line rise" style="--d:80ms"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="question-card rise" style="--d:140ms">
+      <div id="cardInner">
+        <p class="axis-tag rise" id="axisTag" style="--d:60ms"></p>
+        <h2 id="questionText"></h2>
+        <div class="answers" id="answers"></div>
+      </div>
+    </div>
+    <button class="text-link rise" style="--d:500ms" id="backBtn" type="button">← Previous question</button>
+  </section>
+
+  <section id="contemplateScreen" hidden aria-live="polite">
+    <svg class="enso enso-lg" viewBox="0 0 100 100" aria-hidden="true">
+      <g class="spin" filter="url(#inkEdge)">
+        <path class="stroke" pathLength="1" stroke-width="4.5" style="--to:.06; --d:0ms" d="M50 12 A38 38 0 0 1 50 88 A38 38 0 0 1 50 12"/>
+        <path class="stroke" pathLength="1" stroke-width="1.3" opacity=".5" style="--to:.3; --d:300ms" transform="rotate(-24 50 50)" d="M50 18 A32 32 0 0 1 50 82 A32 32 0 0 1 50 18"/>
+      </g>
+    </svg>
+    <p class="rise" style="--d:350ms; margin:0;"><span class="breath">Weighing your answers</span></p>
+  </section>
+
+  <section id="resultScreen" hidden>
+    <p class="kicker rise" style="text-align:center;">Your Result</p>
+    <div class="medallion-wrap">
+      <svg id="dial" viewBox="0 0 200 200" role="img" aria-label="Personality dial">
+        <g class="dial-orbit">
+          <circle class="orbit-ring" cx="100" cy="100" r="94" pathLength="1" transform="rotate(-90 100 100)"/>
+          <g id="dialTicks"></g>
+        </g>
+        <circle class="inner-ring" cx="100" cy="100" r="42"/>
+        <g id="dialArcs"></g>
+        <text id="dialGlyphText" x="100" y="114" text-anchor="middle" class="dial-glyph" font-size="40" fill="var(--brass)">∆</text>
+      </svg>
+    </div>
+    <h2 id="mbtiCode">INTJ</h2>
+    <p class="mbti-caption rise" style="--d:2100ms" id="mbtiCaption"></p>
+
+    <div class="axis-bars" id="axisBars"></div>
+
+    <div class="philosopher-plaque rise" style="--d:2900ms">
+      <p class="glyph rise" style="--d:3150ms"><span class="float" id="philoGlyph">∆</span></p>
+      <h3 class="rise" style="--d:3260ms" id="philoName">Friedrich Nietzsche</h3>
+      <p class="philo-years rise" style="--d:3360ms" id="philoYears">1844–1900</p>
+      <p class="philo-epithet rise" style="--d:3460ms" id="philoEpithet"></p>
+      <blockquote class="rise" style="--d:3620ms" id="philoQuote"></blockquote>
+      <p class="philo-desc rise" style="--d:3800ms" id="philoDesc"></p>
+    </div>
+
+    <div class="film-section rise" style="--d:4250ms">
+      <p class="kicker film-kicker">Something to Watch Tonight</p>
+      <div class="film-card">
+        <div class="film-poster" id="filmPoster">
+          <svg class="film-art" id="filmArt" viewBox="0 0 120 120" aria-hidden="true"></svg>
+          <div class="poster-rule"></div>
+          <p class="poster-title" id="filmPosterTitle"></p>
+          <p class="poster-credits" id="filmPosterCredits"></p>
+        </div>
+        <div class="film-text">
+          <h4 id="filmName"></h4>
+          <p class="film-meta" id="filmMeta"></p>
+          <p class="film-note" id="filmNote"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-actions rise" style="--d:5100ms">
+      <button class="seal-btn" id="retakeBtn" type="button">Take It Again</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var QUESTION_POOL = {
+    EI: {
+      label:"Extraversion — Introversion", left:"E", right:"I",
+      leftName:"Extraversion", rightName:"Introversion",
+      items:[
+        {text:"A friend cancels plans last-minute, leaving you an open Saturday night. You feel...", options:[
+          {text:"Bummed — I'll probably text someone else and salvage the night out.", pole:"E", weight:2},
+          {text:"A bit restless — I'll likely find something social to fill the gap.", pole:"E", weight:1},
+          {text:"Content — a quiet night in sounds like a nice change of pace.", pole:"I", weight:1},
+          {text:"Genuinely relieved — an unplanned evening alone is a small gift.", pole:"I", weight:2}
+        ]},
+        {text:"At a party where you know almost no one, you're most likely to...", options:[
+          {text:"Work the whole room, introducing yourself to as many people as you can.", pole:"E", weight:2},
+          {text:"Drift between a few small groups, chatting as you go.", pole:"E", weight:1},
+          {text:"Find one or two people and stick with them most of the night.", pole:"I", weight:1},
+          {text:"Find a quiet corner, or leave early, and call it a win either way.", pole:"I", weight:2}
+        ]},
+        {text:"After an intense week, you recharge best by...", options:[
+          {text:"Going out — the energy of a crowd is what actually resets you.", pole:"E", weight:2},
+          {text:"Meeting a friend or two, even if it's low-key.", pole:"E", weight:1},
+          {text:"A quiet evening with just one person you're close to.", pole:"I", weight:1},
+          {text:"A quiet night completely alone, no obligations at all.", pole:"I", weight:2}
+        ]},
+        {text:"Do you think a person's true self is revealed more in solitude, or in how they relate to others?", options:[
+          {text:"Entirely in relation to others — selfhood is made of connection.", pole:"E", weight:2},
+          {text:"Mostly through others, though solitude adds some shading.", pole:"E", weight:1},
+          {text:"Mostly in solitude, though relationships reveal something too.", pole:"I", weight:1},
+          {text:"Entirely in solitude — company just performs a role.", pole:"I", weight:2}
+        ]},
+        {text:"Working through a hard problem, you think best by...", options:[
+          {text:"Talking it through out loud with someone, in real time.", pole:"E", weight:2},
+          {text:"Bouncing early thoughts off someone before working it out myself.", pole:"E", weight:1},
+          {text:"Mostly working it out alone, checking in with someone after.", pole:"I", weight:1},
+          {text:"Sitting with it entirely in my own head, undisturbed.", pole:"I", weight:2}
+        ]},
+        {text:"A stranger starts a conversation with you in a waiting room. You...", options:[
+          {text:"Welcome it — this might be the best part of my day.", pole:"E", weight:2},
+          {text:"Happily chat, and don't mind if it runs long.", pole:"E", weight:1},
+          {text:"Engage politely, but hope it winds down soon.", pole:"I", weight:1},
+          {text:"Give short answers and hope they take the hint.", pole:"I", weight:2}
+        ]},
+        {text:"Your ideal weekend has...", options:[
+          {text:"Plans layered on plans — the more people, the better.", pole:"E", weight:2},
+          {text:"A couple of gatherings, with some breathing room between.", pole:"E", weight:1},
+          {text:"One low-key plan at most, and a lot of open time.", pole:"I", weight:1},
+          {text:"No plans at all — just long, unstructured stretches to myself.", pole:"I", weight:2}
+        ]},
+        {text:"Is meaning something we discover privately, or something built together with others?", options:[
+          {text:"Built together — meaning only really exists between people.", pole:"E", weight:2},
+          {text:"Mostly built together, sharpened a little by reflection.", pole:"E", weight:1},
+          {text:"Mostly discovered privately, then tested against others.", pole:"I", weight:1},
+          {text:"Discovered privately — shared meaning is a diluted copy.", pole:"I", weight:2}
+        ]},
+        {text:"In a group project, you naturally...", options:[
+          {text:"Speak first and think out loud as the ideas come.", pole:"E", weight:2},
+          {text:"Jump in fairly early once I have a rough sense of things.", pole:"E", weight:1},
+          {text:"Wait until I've mostly formed a view before speaking.", pole:"I", weight:1},
+          {text:"Stay quiet unless asked directly, and write things down instead.", pole:"I", weight:2}
+        ]},
+        {text:"After a long social event, your energy is...", options:[
+          {text:"Buzzing — honestly, I could keep the night going.", pole:"E", weight:2},
+          {text:"Pretty good, just winding down naturally.", pole:"E", weight:1},
+          {text:"Noticeably tired, ready for things to wrap up.", pole:"I", weight:1},
+          {text:"Completely drained — I need real quiet to feel like myself again.", pole:"I", weight:2}
+        ]}
+      ]
+    },
+    SN: {
+      label:"Sensing — Intuition", left:"S", right:"N",
+      leftName:"Sensing", rightName:"Intuition",
+      items:[
+        {text:"Assembling flat-pack furniture, you...", options:[
+          {text:"Follow the instructions exactly, step by step, in order.", pole:"S", weight:2},
+          {text:"Glance at the steps but mostly build in sequence anyway.", pole:"S", weight:1},
+          {text:"Skim the picture once, then mostly wing it.", pole:"N", weight:1},
+          {text:"Ignore the manual and figure out your own logic for it.", pole:"N", weight:2}
+        ]},
+        {text:"You're more drawn to conversations about...", options:[
+          {text:"What's actually happening — concrete events, facts, real specifics.", pole:"S", weight:2},
+          {text:"Real situations, with a little speculation mixed in.", pole:"S", weight:1},
+          {text:"Ideas and theories, grounded in a real example or two.", pole:"N", weight:1},
+          {text:"What could be — pure ideas, possibilities, hypotheticals.", pole:"N", weight:2}
+        ]},
+        {text:"When someone tells you a story, what stays with you is...", options:[
+          {text:"The concrete details — exactly what was said and done.", pole:"S", weight:2},
+          {text:"Mostly the details, with a general sense of the feeling.", pole:"S", weight:1},
+          {text:"Mostly the feeling and meaning, with a few details attached.", pole:"N", weight:1},
+          {text:"The feeling and meaning underneath it — the details fade fast.", pole:"N", weight:2}
+        ]},
+        {text:"Is reality most truly what we can observe and measure, or what underlies appearances?", options:[
+          {text:"What we observe — the world is exactly as it presents itself.", pole:"S", weight:2},
+          {text:"Mostly what we observe, though some deeper structure exists.", pole:"S", weight:1},
+          {text:"Mostly what underlies it, though observation is a useful clue.", pole:"N", weight:1},
+          {text:"What underlies it entirely — appearances are just surface noise.", pole:"N", weight:2}
+        ]},
+        {text:"Learning a new skill, you prefer to...", options:[
+          {text:"Get clear practical steps and practice hands-on right away.", pole:"S", weight:2},
+          {text:"Try it hands-on, picking up theory only as needed.", pole:"S", weight:1},
+          {text:"Get a rough sense of the theory before touching anything.", pole:"N", weight:1},
+          {text:"Understand the underlying theory fully before I even start.", pole:"N", weight:2}
+        ]},
+        {text:"You tend to trust...", options:[
+          {text:"Direct experience and proven, demonstrable facts.", pole:"S", weight:2},
+          {text:"Facts first, though I'll weigh a strong hunch too.", pole:"S", weight:1},
+          {text:"Hunches and patterns, checked against facts when I can.", pole:"N", weight:1},
+          {text:"Hunches and patterns I sense, even when I can't prove them yet.", pole:"N", weight:2}
+        ]},
+        {text:"Reading a novel, you're pulled in more by...", options:[
+          {text:"Vivid, concrete sensory detail — I want to see the room.", pole:"S", weight:2},
+          {text:"The detail mostly, though I'll notice a theme here and there.", pole:"S", weight:1},
+          {text:"The themes mostly, with the detail as scaffolding.", pole:"N", weight:1},
+          {text:"Symbolism and the ideas underneath — plot detail is secondary.", pole:"N", weight:2}
+        ]},
+        {text:"Is the future best predicted by extrapolating known patterns, or by imagining genuine breaks from the past?", options:[
+          {text:"Extrapolating patterns — history rhymes more than it breaks.", pole:"S", weight:2},
+          {text:"Mostly patterns, with room for occasional surprise.", pole:"S", weight:1},
+          {text:"Mostly genuine breaks — real change often comes from nowhere.", pole:"N", weight:1},
+          {text:"Genuine breaks entirely — the future rarely just extends the past.", pole:"N", weight:2}
+        ]},
+        {text:"Given a map and a compass in unfamiliar terrain, you...", options:[
+          {text:"Follow the map precisely, checking it often.", pole:"S", weight:2},
+          {text:"Use the map as the main guide, with occasional instinct.", pole:"S", weight:1},
+          {text:"Glance at the map sometimes, but mostly go by feel.", pole:"N", weight:1},
+          {text:"Trust your instinct for direction over the map.", pole:"N", weight:2}
+        ]},
+        {text:"You're more interested in...", options:[
+          {text:"How something works, mechanically, piece by piece.", pole:"S", weight:2},
+          {text:"How it works, mostly, with a little curiosity about why.", pole:"S", weight:1},
+          {text:"What it means, mostly, more than the mechanics.", pole:"N", weight:1},
+          {text:"What something means, symbolically — the mechanics are beside the point.", pole:"N", weight:2}
+        ]}
+      ]
+    },
+    TF: {
+      label:"Thinking — Feeling", left:"T", right:"F",
+      leftName:"Thinking", rightName:"Feeling",
+      items:[
+        {text:"A friend asks if their new business idea is good. It has a real flaw. You...", options:[
+          {text:"Tell them directly and specifically what's wrong, right away.", pole:"T", weight:2},
+          {text:"Lead with the flaw, but soften the delivery a little.", pole:"T", weight:1},
+          {text:"Lead with encouragement, then find a gentle way into the flaw.", pole:"F", weight:1},
+          {text:"Focus on what's working and only hint at the flaw, carefully.", pole:"F", weight:2}
+        ]},
+        {text:"Making a hard decision, you weigh more heavily...", options:[
+          {text:"Logical consequences and consistency, full stop.", pole:"T", weight:2},
+          {text:"Logic mostly, with some weight given to people's feelings.", pole:"T", weight:1},
+          {text:"How it affects people mostly, though logic still matters.", pole:"F", weight:1},
+          {text:"How it affects the people involved, above almost anything else.", pole:"F", weight:2}
+        ]},
+        {text:"You most respect people who are...", options:[
+          {text:"Competent and rigorously, sometimes bluntly, honest.", pole:"T", weight:2},
+          {text:"Competent, with warmth as a nice bonus.", pole:"T", weight:1},
+          {text:"Warm, with competence as a nice bonus.", pole:"F", weight:1},
+          {text:"Warm and deeply compassionate, above all else.", pole:"F", weight:2}
+        ]},
+        {text:"Should justice be blind to circumstance, or should it bend to context and mercy?", options:[
+          {text:"Blind to circumstance — consistent rules matter most.", pole:"T", weight:2},
+          {text:"Mostly consistent, with narrow room for exceptions.", pole:"T", weight:1},
+          {text:"Mostly contextual, with some commitment to consistency.", pole:"F", weight:1},
+          {text:"It should bend to context and mercy — that's what justice is for.", pole:"F", weight:2}
+        ]},
+        {text:"In an argument, you're more persuaded by...", options:[
+          {text:"A tight, airtight, logical case.", pole:"T", weight:2},
+          {text:"Logic mostly, though a sincere appeal can move me a little.", pole:"T", weight:1},
+          {text:"A sincere appeal mostly, though logic still counts.", pole:"F", weight:1},
+          {text:"A sincere appeal to shared values, more than any argument.", pole:"F", weight:2}
+        ]},
+        {text:"Giving feedback, you lead with...", options:[
+          {text:"Honesty, directly, with tact as an afterthought.", pole:"T", weight:2},
+          {text:"Honesty first, but I do soften the phrasing.", pole:"T", weight:1},
+          {text:"Tact first, though I make sure the honest point lands.", pole:"F", weight:1},
+          {text:"Tact and care first — the honest part comes gently, if at all.", pole:"F", weight:2}
+        ]},
+        {text:"A rule is causing clear harm in one specific case. You...", options:[
+          {text:"Follow the rule — exceptions erode the whole system.", pole:"T", weight:2},
+          {text:"Follow it, reluctantly, unless the harm is severe.", pole:"T", weight:1},
+          {text:"Bend it quietly if the harm is real and I can justify it.", pole:"F", weight:1},
+          {text:"Break the rule — the person in front of me matters more than the system.", pole:"F", weight:2}
+        ]},
+        {text:"Is a right action defined by its consequences, or by the character and intention behind it?", options:[
+          {text:"Consequences, entirely — outcomes are what actually matter.", pole:"T", weight:2},
+          {text:"Mostly consequences, with intention as a tiebreaker.", pole:"T", weight:1},
+          {text:"Mostly intention, though outcomes still carry weight.", pole:"F", weight:1},
+          {text:"Character and intention — the why matters more than the outcome.", pole:"F", weight:2}
+        ]},
+        {text:"When someone is upset, your first instinct is to...", options:[
+          {text:"Help them think it through and solve the actual problem.", pole:"T", weight:2},
+          {text:"Offer a little comfort, then move toward solving it.", pole:"T", weight:1},
+          {text:"Sit with them for a while before even thinking about solutions.", pole:"F", weight:1},
+          {text:"Just sit with them and validate how they feel — no fixing needed.", pole:"F", weight:2}
+        ]},
+        {text:"You'd rather be known as...", options:[
+          {text:"Fair and correct, even when it's not what people want to hear.", pole:"T", weight:2},
+          {text:"Fair, mostly, with kindness when it doesn't cost accuracy.", pole:"T", weight:1},
+          {text:"Kind, mostly, with fairness as a close second.", pole:"F", weight:1},
+          {text:"Kind and caring, above being right.", pole:"F", weight:2}
+        ]}
+      ]
+    },
+    JP: {
+      label:"Judging — Perceiving", left:"J", right:"P",
+      leftName:"Judging", rightName:"Perceiving",
+      items:[
+        {text:"Packing for a trip, you...", options:[
+          {text:"Have a checklist and pack methodically, days ahead.", pole:"J", weight:2},
+          {text:"Pack a day or two ahead, roughly organized.", pole:"J", weight:1},
+          {text:"Pack the night before, in a reasonable rush.", pole:"P", weight:1},
+          {text:"Throw things in that morning and sort it out at the airport.", pole:"P", weight:2}
+        ]},
+        {text:"Your calendar tends to look like...", options:[
+          {text:"Fully planned — blocks scheduled well ahead of time.", pole:"J", weight:2},
+          {text:"Mostly planned, with some open space left on purpose.", pole:"J", weight:1},
+          {text:"Mostly open, with a few fixed commitments.", pole:"P", weight:1},
+          {text:"Wide open, filled in only as things come up.", pole:"P", weight:2}
+        ]},
+        {text:"A project deadline is two weeks out. You...", options:[
+          {text:"Start immediately and keep a steady, even pace toward it.", pole:"J", weight:2},
+          {text:"Start fairly early, though the pace picks up later.", pole:"J", weight:1},
+          {text:"Start in the second week, once it feels more real.", pole:"P", weight:1},
+          {text:"Feel most productive once the deadline is genuinely close.", pole:"P", weight:2}
+        ]},
+        {text:"Is a well-lived life one that's deliberately structured, or one that stays open to whatever arises?", options:[
+          {text:"Deliberately structured — a life needs real direction to mean anything.", pole:"J", weight:2},
+          {text:"Mostly structured, with some room left for the unexpected.", pole:"J", weight:1},
+          {text:"Mostly open, with just enough structure to hold it together.", pole:"P", weight:1},
+          {text:"Open to what arises — too much planning forecloses what matters.", pole:"P", weight:2}
+        ]},
+        {text:"Plans change at the last minute. You feel...", options:[
+          {text:"Genuinely frustrated — I had it figured out for a reason.", pole:"J", weight:2},
+          {text:"A little thrown, but I adjust without much trouble.", pole:"J", weight:1},
+          {text:"Mostly fine, and a little curious what happens instead.", pole:"P", weight:1},
+          {text:"Actually pretty pleased — plans changing is half the fun.", pole:"P", weight:2}
+        ]},
+        {text:"You prefer a vacation that's...", options:[
+          {text:"Fully booked and itinerary-planned, start to finish.", pole:"J", weight:2},
+          {text:"Mostly planned, with a free afternoon or two.", pole:"J", weight:1},
+          {text:"Loosely sketched, decided mostly day by day.", pole:"P", weight:1},
+          {text:"Entirely unplanned — see where the trip takes me.", pole:"P", weight:2}
+        ]},
+        {text:"Leaving a decision open feels...", options:[
+          {text:"Genuinely uncomfortable — I'd rather decide and move on.", pole:"J", weight:2},
+          {text:"A little itchy, though I can sit with it if I need to.", pole:"J", weight:1},
+          {text:"Fine, mostly — I don't mind letting it breathe.", pole:"P", weight:1},
+          {text:"Freeing — keeping the options alive feels like the right move.", pole:"P", weight:2}
+        ]},
+        {text:"Does freedom mean choosing your constraints in advance, or refusing to be bound by any plan at all?", options:[
+          {text:"Choosing constraints in advance — real structure is what enables freedom.", pole:"J", weight:2},
+          {text:"Mostly the former, with some flexibility built in.", pole:"J", weight:1},
+          {text:"Mostly the latter, though some loose structure still helps.", pole:"P", weight:1},
+          {text:"Refusing fixed plans entirely — freedom means staying unbound.", pole:"P", weight:2}
+        ]},
+        {text:"Your workspace tends to be...", options:[
+          {text:"Organized precisely, with everything in its place.", pole:"J", weight:2},
+          {text:"Mostly tidy, with the occasional pile.", pole:"J", weight:1},
+          {text:"A working pile system, but I know where things are.", pole:"P", weight:1},
+          {text:"A productive-looking chaos — impossible to explain, but it works.", pole:"P", weight:2}
+        ]},
+        {text:"When a task has no clear deadline, you...", options:[
+          {text:"Set one for myself immediately — open-ended is uncomfortable.", pole:"J", weight:2},
+          {text:"Set a loose one, mostly to keep myself moving.", pole:"J", weight:1},
+          {text:"Let it sit for a while before circling back.", pole:"P", weight:1},
+          {text:"Let it breathe entirely, and finish only when it feels done.", pole:"P", weight:2}
+        ]}
+      ]
+    }
+  };
+
+  var PHILOSOPHERS = {
+    INTJ:{name:"Friedrich Nietzsche", years:"1844–1900", glyph:"∆", epithet:"The Architect of Self-Overcoming",
+      quote:"He who has a why to live can bear almost any how.",
+      desc:"Nietzsche distrusted crowds and built his philosophy largely alone, on mountain paths and in long silences. Like an INTJ, he was less interested in fitting the given order than in seeing past it — testing every inherited value against a private, unrelenting standard, then building something new from what survived."},
+    INTP:{name:"Immanuel Kant", years:"1724–1804", glyph:"Ω", epithet:"The Clockwork of Reason",
+      quote:"Sapere aude — dare to know.",
+      desc:"Kant walked the same route through Königsberg at the same hour for decades, so precisely that neighbors set their clocks by him — yet inside that routine he built one of the most intricate systems of thought ever devised. An INTP's gift: total structural rigor spent mapping ideas no one had charted before."},
+    ENTJ:{name:"Aristotle", years:"384–322 BC", glyph:"Λ", epithet:"The First Systematizer",
+      quote:"It is the mark of an educated mind to entertain a thought without accepting it.",
+      desc:"Aristotle didn't just theorize — he organized. Biology, ethics, logic, politics: he built the filing cabinet the Western world has argued inside ever since. That drive to take a sprawling domain and impose a workable, teachable structure on it is ENTJ through and through."},
+    ENTP:{name:"Socrates", years:"c. 470–399 BC", glyph:"?", epithet:"The Gadfly of Athens",
+      quote:"I know that I know nothing.",
+      desc:"Socrates never wrote a word — he just asked questions in the market square until other people's certainties fell apart in public. That restless, needling delight in the counter-argument, in finding the crack in any settled position, is an ENTP's native habitat."},
+    INFJ:{name:"Søren Kierkegaard", years:"1813–1855", glyph:"†", epithet:"The Solitary Leaper",
+      quote:"Life can only be understood backwards, but it must be lived forwards.",
+      desc:"Kierkegaard wrote obsessively about the terror and necessity of becoming truly yourself, often under pseudonyms, always half a step apart from Copenhagen society. An INFJ's inward intensity, married to the conviction that inner truth matters more than outer approval."},
+    INFP:{name:"Jean-Jacques Rousseau", years:"1712–1778", glyph:"❧", epithet:"The Heart Before the Crowd",
+      quote:"Man is born free, and everywhere he is in chains.",
+      desc:"Rousseau trusted feeling over convention and believed society had corrupted something purer in us. He wrote a bruising, unguarded memoir of his own inner life before that was fashionable to do. That idealism, and the wound underneath it, are pure INFP."},
+    ENFJ:{name:"Confucius", years:"551–479 BC", glyph:"道", epithet:"The Teacher of Right Relation",
+      quote:"Wheresoever you go, go with all your heart.",
+      desc:"Confucius's philosophy is almost entirely about how people ought to treat one another — ruler and subject, parent and child, friend and friend — cultivated through daily practice, not doctrine. An ENFJ's instinct to guide, to model virtue, and to hold a community together."},
+    ENFP:{name:"Voltaire", years:"1694–1778", glyph:"»", epithet:"The Wit With a Cause",
+      quote:"I disapprove of what you say, but I will defend to the death your right to say it.",
+      desc:"Voltaire turned outrage into entertainment and used his enormous social gifts — charm, wit, an endless stream of letters — to fight injustice in public. ENFPs channel exactly that: big ideas, delivered with warmth and performance, aimed at making the world a little less cruel."},
+    ISTJ:{name:"John Locke", years:"1632–1704", glyph:"☐", epithet:"The Careful Foundation-Layer",
+      quote:"The mind is furnished with ideas by experience alone.",
+      desc:"Locke didn't trust inherited authority or claims of innate certainty — he wanted every belief built up patiently from observed evidence, brick by brick. That methodical, show-your-work rigor, and quiet faith in careful process over flashes of insight, is ISTJ to the core."},
+    ISFJ:{name:"Thomas Aquinas", years:"1225–1274", glyph:"Σ", epithet:"The Quiet Keeper of the Whole",
+      quote:"To one who has faith, no explanation is necessary.",
+      desc:"Aquinas spent decades reconciling faith and reason into one enormous, carefully tended structure, the Summa — not to win an argument, but out of devotion to something larger than himself. ISFJs share that patient, dutiful care for the tradition they've been entrusted with."},
+    ESTJ:{name:"Thomas Hobbes", years:"1588–1679", glyph:"§", epithet:"The Builder of Order",
+      quote:"Covenants, without the sword, are but words.",
+      desc:"Hobbes looked at human nature without sentiment and concluded that without firm structure, life turns brutal fast — so he argued plainly for clear authority and enforceable rules. That blunt, order-first practicality is classic ESTJ."},
+    ESFJ:{name:"Epicurus", years:"341–270 BC", glyph:"⁂", epithet:"The Host of the Garden",
+      quote:"It is not what we have but what we enjoy that constitutes our abundance.",
+      desc:"Epicurus is remembered for pleasure, but what he actually built was a community — a literal garden where friends lived, ate, and talked together, because he believed good company was the real source of a happy life. ESFJs share that gift for building warm, sustaining togetherness."},
+    ISTP:{name:"Diogenes", years:"c. 412–323 BC", glyph:"○", epithet:"The Barrel-Dweller",
+      quote:"I am looking for an honest man.",
+      desc:"Diogenes owned almost nothing, slept in a large ceramic jar, and tested every social convention by simply refusing to observe it — famously walking through Athens in daylight with a lit lamp, looking for one honest person. That stripped-down, hands-on, rule-skeptical independence is pure ISTP."},
+    ISFP:{name:"Albert Camus", years:"1913–1960", glyph:"☉", epithet:"The Sun-Struck Rebel",
+      quote:"In the depth of winter, I finally learned that within me there lay an invincible summer.",
+      desc:"Camus wrote about the absurd — a universe indifferent to our need for meaning — and concluded the right response wasn't despair but a quiet, sensory devotion to living anyway: the sea, the sun, the people you love. An ISFP's aesthetic, present-tense authenticity."},
+    ESTP:{name:"Niccolò Machiavelli", years:"1469–1527", glyph:"※", epithet:"The Realist in the Room",
+      quote:"Never was anything great achieved without danger.",
+      desc:"Machiavelli stripped politics of wishful thinking and wrote, with startling bluntness, about what actually works when power is on the line. That bold, unsentimental readiness to act on what the moment requires, not what the rulebook says, is ESTP through and through."},
+    ESFP:{name:"Michel de Montaigne", years:"1533–1592", glyph:"∽", epithet:"The Honest Companion",
+      quote:"Que sais-je? — What do I know?",
+      desc:"Montaigne essentially invented the essay by writing about himself — his tastes, his moods, his body, his friendships — with disarming honesty and real curiosity about other people. That warm, present, unpretentious openness to experience is ESFP at its best."}
+  };
+
+  var FILMS = {
+    INTJ:{title:"There Will Be Blood", year:"2007", director:"Paul Thomas Anderson", art:"derrick", accent:"oxblood",
+      note:"A portrait of a will that answers to nothing outside itself. It opens with fifteen minutes of almost no dialogue and trusts you to keep up — best watched alone, closely."},
+    INTP:{title:"Primer", year:"2004", director:"Shane Carruth", art:"boxes", accent:"teal",
+      note:"Two engineers build something in a garage, and the film flatly refuses to explain it. It's made to be paused, argued about, and diagrammed on paper afterwards."},
+    ENTJ:{title:"The Godfather", year:"1972", director:"Francis Ford Coppola", art:"strings", accent:"brass",
+      note:"A film about turning chaos into an institution, one cold decision at a time — and about what running the system does to the person holding it together."},
+    ENTP:{title:"Dr. Strangelove", year:"1964", director:"Stanley Kubrick", art:"arc", accent:"slate",
+      note:"Every character argues impeccably, and the impeccable arguments march everyone off a cliff. The sharpest logic in the room is also the funniest."},
+    INFJ:{title:"Wings of Desire", year:"1987", director:"Wim Wenders", art:"wings", accent:"slate",
+      note:"An angel drifts through a city listening to private thoughts, and slowly decides that one ordinary human life is worth more than eternity. Slow, and quietly overwhelming."},
+    INFP:{title:"Portrait of a Lady on Fire", year:"2019", director:"Céline Sciamma", art:"flame", accent:"oxblood",
+      note:"Almost no music, almost no plot machinery — just two people paying complete attention to each other until attention turns into love."},
+    ENFJ:{title:"Dead Poets Society", year:"1989", director:"Peter Weir", art:"book", accent:"brass",
+      note:"A teacher tries to hand a room of boys their own lives back. It's warm about what that gives them and honest about what it costs him."},
+    ENFP:{title:"Everything Everywhere All at Once", year:"2022", director:"Daniel Kwan & Daniel Scheinert", art:"ring", accent:"teal",
+      note:"Every possible version of one life, running at once, at maximum volume — and the answer it arrives at is simply to be kind. Exhausting in the best way."},
+    ISTJ:{title:"12 Angry Men", year:"1957", director:"Sidney Lumet", art:"twelve", accent:"brass",
+      note:"One room, one table, and one man who will not vote until the evidence actually holds together. Patience and method played as heroism."},
+    ISFJ:{title:"Ikiru", year:"1952", director:"Akira Kurosawa", art:"swing", accent:"teal",
+      note:"A quiet civil servant learns he is dying and spends his last months pushing one small, unglamorous good thing through. The final scene on the swing earns everything."},
+    ESTJ:{title:"The Bridge on the River Kwai", year:"1957", director:"David Lean", art:"bridge", accent:"brass",
+      note:"A man builds something excellent under impossible conditions, then has to face the question of what he built it for. Order as both virtue and trap."},
+    ESFJ:{title:"Babette's Feast", year:"1987", director:"Gabriel Axel", art:"plate", accent:"brass",
+      note:"A woman spends everything she has cooking one meal for people who have forgotten how to enjoy anything. Generosity as an entire philosophy, served in courses."},
+    ISTP:{title:"Mad Max: Fury Road", year:"2015", director:"George Miller", art:"road", accent:"oxblood",
+      note:"Barely any exposition — just machines, hands, and problems solved at speed by people who understand how things come apart. Practically a silent film with engines."},
+    ISFP:{title:"Paterson", year:"2016", director:"Jim Jarmusch", art:"lines", accent:"teal",
+      note:"A week in the life of a bus driver who writes poems in a notebook. Nothing dramatic happens, and it is quietly one of the loveliest films about noticing things."},
+    ESTP:{title:"Heat", year:"1995", director:"Michael Mann", art:"skyline", accent:"slate",
+      note:"Two professionals who are only fully alive while working, circling each other across a city at night. The diner scene is two realists admitting exactly that."},
+    ESFP:{title:"Chungking Express", year:"1994", director:"Wong Kar-wai", art:"neon", accent:"oxblood",
+      note:"Two love stories told in neon, pop songs and motion, with an enormous appetite for small sensory details. Pure present tense."}
+  };
+
+  // Each poster motif is drawn from scratch, so it needs no network and matches the page.
+  function reps(n, fn){
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(fn(i));
+    return out;
+  }
+  function stroke(d){ return '<path class="draws" pathLength="1" d="' + d + '"/>'; }
+  function disc(cx, cy, r){ return '<circle class="fades" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'; }
+
+  var FILM_ART = {
+    derrick: [disc(60, 38, 15), stroke("M40 104 L60 24 L80 104"), stroke("M47 66 H73"), stroke("M10 104 H110")],
+    boxes: [stroke("M32 38 H88 V94 H32 Z"),
+      '<path class="draws" pathLength="1" transform="rotate(11 60 66)" d="M42 48 H78 V84 H42 Z"/>',
+      '<path class="draws" pathLength="1" transform="rotate(-14 60 66)" d="M52 58 H68 V74 H52 Z"/>'],
+    strings: [stroke("M22 26 H98"), stroke("M34 26 V72"), stroke("M60 26 V86"), stroke("M86 26 V72"), disc(60, 98, 6)],
+    arc: [stroke("M10 100 Q46 4 102 50"), disc(102, 50, 7), stroke("M8 106 H112")],
+    wings: [disc(60, 26, 9), stroke("M14 62 Q38 34 60 58"), stroke("M60 58 Q82 34 106 62"),
+      stroke("M30 82 Q44 70 58 80"), stroke("M58 80 Q72 70 88 82")],
+    flame: [stroke("M60 100 V66"), stroke("M60 24 C75 46 72 66 60 66 C48 66 45 46 60 24 Z"), stroke("M38 104 H82")],
+    book: [stroke("M60 98 C44 80 26 76 14 80 L14 42 C30 36 48 42 60 56"),
+      stroke("M60 98 C76 80 94 76 106 80 L106 42 C90 36 72 42 60 56"), stroke("M60 56 V98")],
+    ring: ['<circle class="draws" pathLength="1" cx="60" cy="58" r="31"/>',
+      '<circle class="draws" pathLength="1" cx="60" cy="58" r="9"/>'].concat(
+      reps(6, function(i){
+        var a = i * Math.PI / 3;
+        return disc(60 + Math.cos(a) * 48, 58 + Math.sin(a) * 48, 2.6);
+      })),
+    twelve: reps(12, function(i){
+      return i === 4 ? stroke("M" + (14 + i * 8) + " 48 V96") : stroke("M" + (14 + i * 8) + " 28 V100");
+    }),
+    swing: [disc(60, 46, 17), stroke("M12 72 H108"), stroke("M22 86 H98"), stroke("M34 100 H86")],
+    bridge: [stroke("M8 60 H112"), stroke("M28 60 V100"), stroke("M92 60 V100"), stroke("M28 60 L60 100 L92 60"),
+      stroke("M14 110 H106")],
+    plate: ['<circle class="draws" pathLength="1" cx="60" cy="60" r="32"/>',
+      '<circle class="draws" pathLength="1" cx="60" cy="60" r="19"/>', stroke("M14 40 V80"), stroke("M106 40 V80")],
+    road: [disc(60, 26, 11), stroke("M16 108 L54 34"), stroke("M104 108 L66 34")].concat(
+      reps(3, function(i){ return stroke("M60 " + (48 + i * 20) + " V" + (58 + i * 20)); })),
+    lines: reps(5, function(i){ return stroke("M16 " + (32 + i * 14) + " H" + (102 - i * 7)); }).concat([stroke("M16 104 H46")]),
+    skyline: [stroke("M8 98 H112")].concat(
+      reps(7, function(i){
+        var h = [58, 34, 74, 46, 86, 40, 62][i];
+        return stroke("M" + (18 + i * 13) + " " + (98 - h) + " V98");
+      })).concat([disc(31, 54, 2.4), disc(70, 40, 2.4), disc(96, 62, 2.4)]),
+    neon: [stroke("M20 102 L52 20"), stroke("M52 106 L84 24"), stroke("M84 102 L112 34"), disc(34, 42, 3), disc(96, 84, 3)]
+  };
+
+  var AXES = ["EI","SN","TF","JP"];
+  var AXIS_COLOR = {EI:"var(--brass)", SN:"var(--teal)", TF:"var(--oxblood)", JP:"var(--slate)"};
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  var state = {
+    screen:"intro",
+    plan:[],
+    index:0,
+    answers:[]
+  };
+
+  var els = {
+    intro: document.getElementById("introScreen"),
+    quiz: document.getElementById("quizScreen"),
+    contemplate: document.getElementById("contemplateScreen"),
+    result: document.getElementById("resultScreen"),
+    beginBtn: document.getElementById("beginBtn"),
+    progressLabel: document.getElementById("progressLabel"),
+    progressFill: document.getElementById("progressFill"),
+    ticks: document.getElementById("ticks"),
+    cardInner: document.getElementById("cardInner"),
+    axisTag: document.getElementById("axisTag"),
+    questionText: document.getElementById("questionText"),
+    answers: document.getElementById("answers"),
+    backBtn: document.getElementById("backBtn"),
+    retakeBtn: document.getElementById("retakeBtn"),
+    dial: document.getElementById("dial"),
+    dialTicks: document.getElementById("dialTicks"),
+    dialArcs: document.getElementById("dialArcs"),
+    dialGlyphText: document.getElementById("dialGlyphText"),
+    mbtiCode: document.getElementById("mbtiCode"),
+    mbtiCaption: document.getElementById("mbtiCaption"),
+    axisBars: document.getElementById("axisBars"),
+    philoGlyph: document.getElementById("philoGlyph"),
+    philoName: document.getElementById("philoName"),
+    philoYears: document.getElementById("philoYears"),
+    philoEpithet: document.getElementById("philoEpithet"),
+    philoQuote: document.getElementById("philoQuote"),
+    philoDesc: document.getElementById("philoDesc"),
+    filmPoster: document.getElementById("filmPoster"),
+    filmArt: document.getElementById("filmArt"),
+    filmPosterTitle: document.getElementById("filmPosterTitle"),
+    filmPosterCredits: document.getElementById("filmPosterCredits"),
+    filmName: document.getElementById("filmName"),
+    filmMeta: document.getElementById("filmMeta"),
+    filmNote: document.getElementById("filmNote")
+  };
+  var SCREENS = ["intro", "quiz", "contemplate", "result"];
+
+  // ---- timing helpers ----
+  var busy = false;
+
+  function later(fn, ms){ return window.setTimeout(fn, REDUCED ? 0 : ms); }
+
+  // Re-trigger every CSS entrance inside el.
+  function play(el){
+    el.classList.remove("play", "leaving");
+    void el.offsetWidth;
+    el.classList.add("play");
+  }
+
+  function restart(el){
+    el.style.animation = "none";
+    void el.offsetWidth;
+    el.style.animation = "";
+  }
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function buildPlan(){
+    var counts = {EI:2, SN:2, TF:2, JP:2};
+    var remaining = 2;
+    while (remaining > 0){
+      var axis = AXES[Math.floor(Math.random() * AXES.length)];
+      if (counts[axis] < QUESTION_POOL[axis].items.length){
+        counts[axis]++;
+        remaining--;
+      }
+    }
+    var plan = [];
+    AXES.forEach(function(axis){
+      var pool = QUESTION_POOL[axis];
+      var picks = shuffle(pool.items.slice()).slice(0, counts[axis]);
+      picks.forEach(function(q){
+        plan.push({
+          axis: axis,
+          label: pool.label,
+          leftPole: pool.left, rightPole: pool.right,
+          leftName: pool.leftName, rightName: pool.rightName,
+          text: q.text,
+          options: q.options
+        });
+      });
+    });
+    return shuffle(plan);
+  }
+
+  function showScreen(name){
+    if (name !== "contemplate") state.screen = name;
+    SCREENS.forEach(function(s){
+      els[s].hidden = s !== name;
+      els[s].classList.remove("leaving");
+    });
+    play(els[name]);
+  }
+
+  function visibleScreen(){
+    for (var i = 0; i < SCREENS.length; i++){
+      if (!els[SCREENS[i]].hidden) return els[SCREENS[i]];
+    }
+    return null;
+  }
+
+  // Dissolve the current screen, then bring in the next one.
+  function crossTo(name, prepare){
+    var cur = visibleScreen();
+    busy = true;
+    if (cur) cur.classList.add("leaving");
+    later(function(){
+      if (prepare) prepare();
+      showScreen(name);
+      window.scrollTo({top:0, behavior:"instant"});
+      busy = false;
+    }, cur ? 460 : 0);
+  }
+
+  function renderTicks(){
+    if (els.ticks.children.length !== state.plan.length){
+      els.ticks.innerHTML = "";
+      for (var i = 0; i < state.plan.length; i++){
+        var d = document.createElement("span");
+        d.className = "tick";
+        els.ticks.appendChild(d);
+      }
+    }
+    Array.prototype.forEach.call(els.ticks.children, function(d, i){
+      d.classList.toggle("done", !!state.answers[i]);
+      d.classList.toggle("current", i === state.index);
+    });
+  }
+
+  var MARKS = ["A", "B", "C", "D"];
+
+  function renderQuestion(){
+    var q = state.plan[state.index];
+    els.progressLabel.textContent = "QUESTION " + String(state.index + 1).padStart(2, "0") + " / " + state.plan.length;
+    els.progressFill.style.setProperty("--p", state.index / state.plan.length);
+    els.axisTag.textContent = q.label.toUpperCase();
+    restart(els.axisTag);
+
+    // Question arrives word by word, like ink settling.
+    els.questionText.textContent = "";
+    var words = q.text.split(" ");
+    words.forEach(function(w, i){
+      var s = document.createElement("span");
+      s.className = "word";
+      s.style.setProperty("--d", (140 + i * 42) + "ms");
+      s.textContent = w;
+      els.questionText.appendChild(s);
+      if (i < words.length - 1) els.questionText.appendChild(document.createTextNode(" "));
+    });
+    var base = 320 + Math.min(words.length, 18) * 42;
+
+    els.answers.innerHTML = "";
+    els.answers.classList.remove("settling");
+    var prior = state.answers[state.index];
+    q.options.forEach(function(opt, i){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "plaque rise" + (prior && prior.index === i ? " selected" : "");
+      btn.style.setProperty("--d", (base + i * 110) + "ms");
+      var mark = document.createElement("span");
+      mark.className = "plaque-mark";
+      mark.textContent = MARKS[i];
+      var txt = document.createElement("span");
+      txt.textContent = opt.text;
+      btn.appendChild(mark);
+      btn.appendChild(txt);
+      btn.addEventListener("click", function(e){ selectAnswer(i, opt, btn, e); });
+      els.answers.appendChild(btn);
+    });
+
+    els.cardInner.classList.remove("leaving");
+    els.backBtn.disabled = state.index === 0;
+    renderTicks();
+  }
+
+  function spawnInk(btn, evt){
+    if (REDUCED) return;
+    var r = btn.getBoundingClientRect();
+    var fromPointer = evt && evt.detail > 0;
+    var ink = document.createElement("i");
+    ink.className = "ink";
+    ink.style.left = (fromPointer ? evt.clientX - r.left : r.width / 2) + "px";
+    ink.style.top = (fromPointer ? evt.clientY - r.top : r.height / 2) + "px";
+    btn.insertBefore(ink, btn.firstChild);
+    ink.addEventListener("animationend", function(){ ink.remove(); });
+  }
+
+  function selectAnswer(index, opt, btn, evt){
+    if (busy) return;
+    busy = true;
+    state.answers[state.index] = {index: index, pole: opt.pole, weight: opt.weight};
+    Array.prototype.forEach.call(els.answers.children, function(b, i){
+      b.classList.toggle("selected", i === index);
+    });
+    els.answers.classList.add("settling");
+    spawnInk(btn, evt);
+    renderTicks();
+
+    later(function(){
+      if (state.index < state.plan.length - 1){
+        els.cardInner.classList.add("leaving");
+        later(function(){
+          state.index++;
+          renderQuestion();
+          busy = false;
+        }, 440);
+      } else {
+        els.progressFill.style.setProperty("--p", 1);
+        contemplate();
+      }
+    }, 720);
+  }
+
+  // A quiet pause before the reveal.
+  function contemplate(){
+    crossTo("contemplate");
+    busy = true;
+    later(function(){
+      crossTo("result", renderResult);
+    }, 460 + 2700);
+  }
+
+  function computeResults(){
+    var tally = {EI:{}, SN:{}, TF:{}, JP:{}};
+    state.plan.forEach(function(q, i){
+      var a = state.answers[i];
+      if (!a) return;
+      tally[q.axis][a.pole] = (tally[q.axis][a.pole] || 0) + a.weight;
+    });
+    var code = "";
+    var breakdown = {};
+    AXES.forEach(function(axis){
+      var pool = QUESTION_POOL[axis];
+      var left = tally[axis][pool.left] || 0;
+      var right = tally[axis][pool.right] || 0;
+      var total = left + right || 1;
+      var winner;
+      if (left === right) winner = Math.random() < 0.5 ? pool.left : pool.right;
+      else winner = left > right ? pool.left : pool.right;
+      code += winner;
+      breakdown[axis] = {left:left, right:right, total:total, winner:winner};
+    });
+    return {code:code, breakdown:breakdown};
+  }
+
+  function polarToCartesian(cx, cy, r, angleDeg){
+    var a = (angleDeg - 90) * Math.PI / 180;
+    return {x: cx + r * Math.cos(a), y: cy + r * Math.sin(a)};
+  }
+
+  // Clockwise, so the arcs draw in the direction of the orbit.
+  function describeArc(cx, cy, r, startAngle, endAngle){
+    var start = polarToCartesian(cx, cy, r, startAngle);
+    var end = polarToCartesian(cx, cy, r, endAngle);
+    var largeArc = endAngle - startAngle <= 180 ? "0" : "1";
+    return ["M", start.x, start.y, "A", r, r, 0, largeArc, 1, end.x, end.y].join(" ");
+  }
+
+  function renderDialTicks(){
+    if (els.dialTicks.childNodes.length) return;
+    for (var i = 0; i < 48; i++){
+      var major = i % 12 === 0;
+      var p1 = polarToCartesian(100, 100, major ? 84 : 87, i * 7.5);
+      var p2 = polarToCartesian(100, 100, 90, i * 7.5);
+      var line = document.createElementNS(SVG_NS, "line");
+      line.setAttribute("x1", p1.x); line.setAttribute("y1", p1.y);
+      line.setAttribute("x2", p2.x); line.setAttribute("y2", p2.y);
+      line.setAttribute("class", "dial-tick" + (major ? " major" : ""));
+      line.style.setProperty("--d", (250 + i * 16) + "ms");
+      els.dialTicks.appendChild(line);
+    }
+  }
+
+  function renderDial(breakdown){
+    els.dialArcs.innerHTML = "";
+    var quadrants = [
+      {axis:"EI", start:0}, {axis:"SN", start:90}, {axis:"TF", start:180}, {axis:"JP", start:270}
+    ];
+    quadrants.forEach(function(q, k){
+      var b = breakdown[q.axis];
+      var pct = b.winner === QUESTION_POOL[q.axis].left ? b.left / b.total : b.right / b.total;
+      var radius = 56 + pct * 16;
+      var gap = 5;
+      var path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", describeArc(100, 100, radius, q.start + gap, q.start + 90 - gap));
+      path.setAttribute("class", "dial-arc");
+      path.setAttribute("pathLength", "1");
+      path.setAttribute("stroke", AXIS_COLOR[q.axis]);
+      path.style.setProperty("--d", (520 + k * 220) + "ms");
+      els.dialArcs.appendChild(path);
+    });
+  }
+
+  function renderCode(code){
+    els.mbtiCode.textContent = "";
+    els.mbtiCode.setAttribute("aria-label", code);
+    code.split("").forEach(function(ch, i){
+      var s = document.createElement("span");
+      s.className = "letter";
+      s.setAttribute("aria-hidden", "true");
+      s.style.setProperty("--d", (1500 + i * 140) + "ms");
+      s.textContent = ch;
+      els.mbtiCode.appendChild(s);
+    });
+  }
+
+  var renderToken = 0;
+
+  function countUp(el, target, fmt, delay){
+    if (REDUCED){ el.textContent = fmt(target); return; }
+    var token = renderToken;
+    el.textContent = fmt(0);
+    window.setTimeout(function(){
+      var t0 = performance.now();
+      function step(now){
+        if (token !== renderToken) return;
+        var t = Math.min(1, (now - t0) / 1500);
+        var eased = 1 - Math.pow(1 - t, 4);
+        el.textContent = fmt(Math.round(target * eased));
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }, delay);
+  }
+
+  function renderAxisBars(breakdown){
+    els.axisBars.innerHTML = "";
+    AXES.forEach(function(axis, r){
+      var pool = QUESTION_POOL[axis];
+      var b = breakdown[axis];
+      var leftPct = Math.round((b.left / b.total) * 100);
+      var rightPct = 100 - leftPct;
+      var leftWins = b.winner === pool.left;
+      var at = 2300 + r * 130;
+
+      var row = document.createElement("div");
+      row.className = "axis-row rise";
+      row.style.setProperty("--d", at + "ms");
+
+      var leftLabel = document.createElement("span");
+      leftLabel.className = "pole pole-left" + (leftWins ? " active" : "");
+      countUp(leftLabel, leftPct, function(n){ return pool.leftName + " " + n + "%"; }, at + 150);
+
+      var track = document.createElement("div");
+      track.className = "track";
+      var leftSeg = document.createElement("div");
+      leftSeg.style.width = leftPct + "%";
+      var rightSeg = document.createElement("div");
+      rightSeg.style.width = rightPct + "%";
+      var fill = leftWins ? leftSeg : rightSeg;
+      leftSeg.className = "seg";
+      rightSeg.className = "seg";
+      fill.className = "seg fill";
+      fill.style.background = AXIS_COLOR[axis];
+      fill.style.transformOrigin = leftWins ? "left center" : "right center";
+      fill.style.setProperty("--d", (at + 150) + "ms");
+      track.appendChild(leftSeg);
+      track.appendChild(rightSeg);
+
+      var rightLabel = document.createElement("span");
+      rightLabel.className = "pole pole-right" + (leftWins ? "" : " active");
+      countUp(rightLabel, rightPct, function(n){ return n + "% " + pool.rightName; }, at + 150);
+
+      row.appendChild(leftLabel);
+      row.appendChild(track);
+      row.appendChild(rightLabel);
+      els.axisBars.appendChild(row);
+    });
+  }
+
+  function renderFilm(code){
+    var f = FILMS[code];
+    if (!f) return;
+    els.filmPoster.style.setProperty("--accent", "var(--" + f.accent + ")");
+    els.filmPosterTitle.textContent = f.title;
+    els.filmPosterCredits.textContent = f.director + " · " + f.year;
+    els.filmName.textContent = f.title;
+    els.filmMeta.textContent = "Directed by " + f.director + " · " + f.year;
+    els.filmNote.textContent = f.note;
+    els.filmArt.innerHTML = (FILM_ART[f.art] || []).map(function(el, i){
+      return '<g style="--d:' + (4500 + i * 110) + 'ms">' + el + "</g>";
+    }).join("");
+  }
+
+  function renderResult(){
+    renderToken++;
+    var results = computeResults();
+    var philo = PHILOSOPHERS[results.code];
+
+    renderDialTicks();
+    renderDial(results.breakdown);
+    els.dialGlyphText.textContent = philo.glyph;
+    renderCode(results.code);
+    els.mbtiCaption.textContent = philo.epithet;
+    renderAxisBars(results.breakdown);
+
+    els.philoGlyph.textContent = philo.glyph;
+    els.philoName.textContent = philo.name;
+    els.philoYears.textContent = philo.years;
+    els.philoEpithet.textContent = philo.epithet;
+    els.philoQuote.textContent = "“" + philo.quote + "”";
+    els.philoDesc.textContent = philo.desc;
+    renderFilm(results.code);
+  }
+
+  function showResult(){
+    renderResult();
+    showScreen("result");
+    window.scrollTo({top:0, behavior:"instant"});
+  }
+
+  function startQuiz(){
+    if (busy) return;
+    crossTo("quiz", function(){
+      state.plan = buildPlan();
+      state.index = 0;
+      state.answers = [];
+      renderQuestion();
+    });
+  }
+
+  els.beginBtn.addEventListener("click", startQuiz);
+  els.retakeBtn.addEventListener("click", startQuiz);
+  els.backBtn.addEventListener("click", function(){
+    if (busy || state.index === 0) return;
+    busy = true;
+    els.cardInner.classList.add("leaving");
+    later(function(){
+      state.index--;
+      renderQuestion();
+      busy = false;
+    }, 440);
+  });
+
+  // ---- ambient field: drifting motes and slow ripples on still water ----
+  function startAmbient(){
+    var cv = document.getElementById("ambient");
+    var ctx = cv.getContext && cv.getContext("2d");
+    if (!ctx) return;
+    var W = 0, H = 0, motes = [], ripples = [];
+    var color = "#C9A14A", frame = 0, last = 0, lastRipple = -99999;
+    var fine = window.matchMedia && window.matchMedia("(pointer: fine)").matches;
+    var target = {x:0, y:0}, par = {x:0, y:0};
+
+    function readColor(){
+      var c = getComputedStyle(document.documentElement).getPropertyValue("--brass").trim();
+      if (c) color = c;
+    }
+    function resize(){
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = window.innerWidth; H = window.innerHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var n = Math.round(Math.min(70, Math.max(24, W * H / 24000)));
+      motes = [];
+      for (var i = 0; i < n; i++){
+        motes.push({
+          x: Math.random() * W, y: Math.random() * H,
+          r: 0.5 + Math.random() * 1.7,
+          vy: 0.05 + Math.random() * 0.16,
+          ph: Math.random() * Math.PI * 2,
+          sp: 0.003 + Math.random() * 0.006,
+          a: 0.12 + Math.random() * 0.4
+        });
+      }
+    }
+    function draw(now, dt){
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+
+      if (!REDUCED && now - lastRipple > 6500){
+        lastRipple = now;
+        ripples.push({t0: now, x: W * (0.25 + Math.random() * 0.5), y: H * (0.2 + Math.random() * 0.55)});
+      }
+      ripples = ripples.filter(function(rp){ return now - rp.t0 < 11000; });
+      ripples.forEach(function(rp){
+        var t = (now - rp.t0) / 11000;
+        for (var k = 0; k < 3; k++){
+          var tk = t - k * 0.07;
+          if (tk <= 0) continue;
+          var rad = (1 - Math.pow(1 - tk, 2)) * Math.max(W, H) * 0.5;
+          ctx.globalAlpha = Math.pow(1 - tk, 2) * (0.14 - k * 0.035);
+          ctx.beginPath();
+          ctx.ellipse(rp.x - par.x * 10, rp.y - par.y * 10, rad, rad * 0.38, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+
+      motes.forEach(function(m){
+        m.y -= m.vy * dt;
+        m.ph += m.sp * dt;
+        if (m.y < -10){ m.y = H + 10; m.x = Math.random() * W; }
+        var depth = m.r * 7;
+        ctx.globalAlpha = m.a * (0.55 + 0.45 * Math.sin(m.ph * 1.6));
+        ctx.beginPath();
+        ctx.arc(m.x + Math.sin(m.ph) * 16 + par.x * depth, m.y + par.y * depth, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+    function loop(now){
+      var dt = last ? Math.min(3, (now - last) / 16.67) : 1;
+      last = now;
+      if (++frame % 90 === 0) readColor();
+      par.x += (target.x - par.x) * 0.04 * dt;
+      par.y += (target.y - par.y) * 0.04 * dt;
+      draw(now, dt);
+      if (fine && !els.result.hidden){
+        els.dial.style.transform = "rotateX(" + (-par.y * 14).toFixed(2) + "deg) rotateY(" + (par.x * 14).toFixed(2) + "deg)";
+      }
+      requestAnimationFrame(loop);
+    }
+
+    readColor();
+    resize();
+    window.addEventListener("resize", resize);
+    if (REDUCED){
+      draw(0, 0);
+      return;
+    }
+    if (fine){
+      window.addEventListener("pointermove", function(e){
+        target.x = e.clientX / W - 0.5;
+        target.y = e.clientY / H - 0.5;
+      });
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function snapshot(){
+    return {screen: state.screen, plan: state.plan, index: state.index, answers: state.answers};
+  }
+
+  function boot(data){
+    if (data && data.plan && data.plan.length){
+      state.plan = data.plan;
+      state.index = data.index || 0;
+      state.answers = data.answers || [];
+      if (data.screen === "result" && state.answers.length === state.plan.length){
+        showResult();
+      } else if (data.screen === "quiz"){
+        renderQuestion();
+        showScreen("quiz");
+      } else {
+        showScreen("intro");
+      }
+    } else {
+      showScreen("intro");
+    }
+    try{
+      if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+        window.claude.hot.snapshot(snapshot);
+      }
+    }catch(e){}
+  }
+
+  try{ startAmbient(); }catch(e){}
+
+  try{
+    if (window.claude && window.claude.hot && window.claude.hot.ready){
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  }catch(e){
+    boot(null);
+  }
+})();
+</script>
+
+</body>
+</html>
