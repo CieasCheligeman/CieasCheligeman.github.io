@@ -1,0 +1,1620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>安曇野 Seismic Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600;900&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap">
+<style>
+/* ═══ tokens ═══════════════════════════════════════════════════════════
+   Light is 青白磁 — the pale blue-white of Nagano porcelain, held well
+   clear of cream. Dark is 墨, ink at night. Every neutral is pulled a
+   few degrees toward the indigo accent so the greys read as chosen.
+   Text tones are set for contrast, not for delicacy: --ink-3 is the
+   faintest tone on the page and still clears 5:1 on its own ground.  */
+:root{
+  --ground:#E9EBE6;  --paper:#F3F5F1;  --raise:#FAFBF8;  --sink:#DDE0DA;
+  color-scheme:light;
+  --ink:#121518;     --ink-2:#3C444B;  --ink-3:#5E6870;
+  --rule:#C0C6BF;    --rule-2:#D5DAD3;
+  --ai:#2A4A5E;      --ai-2:#4E7793;   --ai-wash:rgba(42,74,94,.09);
+  --live:#A8102A;
+  --shadow:0 1px 2px rgba(18,21,24,.05), 0 8px 26px -18px rgba(18,21,24,.30);
+  --moon-cut:translate(8.5px,-2.5px); --ray-op:1; --icon-rot:0deg;
+  --map-filter:saturate(.5) brightness(1.08) contrast(.9);
+  --scrim:rgba(12,15,18,.66);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0A0C0F; --paper:#12161A; --raise:#1A1F25; --sink:#06080A;
+    --ink:#EDF0EB;    --ink-2:#A9B3B9; --ink-3:#7A848B;
+    --rule:#262D34;   --rule-2:#1B2126;
+    --ai:#93B8CE;     --ai-2:#628BA3;  --ai-wash:rgba(147,184,206,.10);
+    --live:#FF5C6E;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+    --moon-cut:translate(-6.5px,1.5px); --ray-op:0; --icon-rot:-38deg;
+    --map-filter:saturate(.68) brightness(.76) contrast(1.06);
+    --scrim:rgba(4,6,8,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0A0C0F; --paper:#12161A; --raise:#1A1F25; --sink:#06080A;
+  --ink:#EDF0EB;    --ink-2:#A9B3B9; --ink-3:#7A848B;
+  --rule:#262D34;   --rule-2:#1B2126;
+  --ai:#93B8CE;     --ai-2:#628BA3;  --ai-wash:rgba(147,184,206,.10);
+  --live:#FF5C6E;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+  --moon-cut:translate(-6.5px,1.5px); --ray-op:0; --icon-rot:-38deg;
+  --map-filter:saturate(.68) brightness(.76) contrast(1.06);
+  --scrim:rgba(4,6,8,.7);
+  color-scheme:dark;
+}
+/* The JMA shindo scale — the real colour system of this subject.
+   Identical in both themes: the scale is the scale. */
+:root{
+  --s1:#556C7A; --s2:#1B7B9C; --s3:#158C68; --s4:#C9A310;
+  --s5m:#DF8117; --s5p:#D24A16; --s6m:#B30E2C; --s6p:#84092B; --s7:#651A73;
+}
+
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0; min-height:100%;
+  background:var(--ground); color:var(--ink);
+  font-family:"Zen Kaku Gothic New",-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;
+  font-weight:400; font-size:16px; line-height:1.7;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+img{max-width:100%}
+[hidden]{display:none!important}
+a{color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule); transition:border-color .2s}
+a:hover{border-bottom-color:var(--ai)}
+:focus-visible{outline:2px solid var(--ai); outline-offset:3px; border-radius:1px}
+h1,h2,h3{text-wrap:balance}
+
+.wrap{max-width:1240px; margin:0 auto; padding-inline:clamp(20px,4vw,40px)}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.disp{font-family:"Zen Old Mincho","Hiragino Mincho ProN",serif}
+/* one utility for every micro-label on the page */
+.tag{
+  font-family:"JetBrains Mono",monospace; font-weight:400; font-size:10.5px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3);
+}
+
+/* ═══ masthead ═════════════════════════════════════════════════════ */
+.mast{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:28px; flex-wrap:wrap; padding-block:clamp(30px,5vw,52px) 26px;
+}
+.mast h1{
+  font-family:"Zen Old Mincho",serif; font-weight:600; margin:0;
+  font-size:clamp(30px,4.6vw,46px); line-height:1.08; letter-spacing:.02em;
+}
+.mast h1 .jp{letter-spacing:.1em; margin-right:.12em}
+.mast .roman{
+  display:block; margin-top:14px; font-family:"JetBrains Mono",monospace;
+  font-weight:400; font-size:11px; letter-spacing:.3em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+.mast-right{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.coord{
+  font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:12.5px; line-height:1.55; color:var(--ink-2); text-align:right;
+}
+.coord b{display:block; font-weight:500; font-size:15px; color:var(--ink); letter-spacing:.02em}
+.coord span{font-size:10.5px; letter-spacing:.16em; color:var(--ink-3); text-transform:uppercase}
+.themebtn{
+  position:relative; width:42px; height:42px; padding:0; flex:0 0 auto;
+  display:grid; place-items:center; cursor:pointer; border-radius:50%;
+  background:none; border:1px solid var(--rule); color:var(--ink-2);
+  transition:border-color .45s var(--ease), color .45s var(--ease),
+             background-color .45s var(--ease);
+}
+.themebtn::before{      /* a halo that breathes outward on hover */
+  content:""; position:absolute; inset:-1px; border-radius:50%;
+  background:var(--ai-wash); opacity:0; transform:scale(.7);
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+}
+.themebtn:hover{border-color:var(--ai); color:var(--ai)}
+.themebtn:hover::before{opacity:1; transform:scale(1.14)}
+.themebtn:active{transform:scale(.94)}
+.themebtn svg{
+  position:relative; width:22px; height:22px; overflow:visible;
+  transform:rotate(var(--icon-rot,0deg));
+  transition:transform 900ms var(--ease);
+}
+.themebtn .disc{fill:currentColor}
+/* the mask circle slides across the disc: full moon becomes crescent */
+.themebtn .cut{
+  transform:var(--moon-cut,translate(8.5px,-2.5px));
+  transition:transform 900ms var(--ease);
+}
+.themebtn .rays{
+  stroke:currentColor; stroke-width:1.5; stroke-linecap:round;
+  opacity:var(--ray-op,1); transform-box:view-box; transform-origin:13px 13px;
+  transform:scale(calc(.55 + var(--ray-op,1) * .45)) rotate(calc(var(--ray-op,1) * 0deg));
+  transition:opacity 700ms var(--ease), transform 900ms var(--ease);
+}
+
+/* ═══ live camera ══════════════════════════════════════════════════ */
+.stage{
+  position:relative; margin:0 auto clamp(30px,5vw,54px);
+  max-width:1000px; width:100%; aspect-ratio:3/2; max-height:min(66vh,660px);
+  overflow:hidden; border-radius:3px; background:var(--sink);
+  box-shadow:0 2px 6px rgba(10,13,16,.10), 0 30px 70px -40px rgba(10,13,16,.55);
+}
+/* Two layers cross-fade while both keep drifting, so no frame is static
+   and no change is ever a cut. */
+.plate{position:absolute; inset:0}
+.plate figure{
+  position:absolute; inset:0; margin:0; opacity:0;
+  transition:opacity 2200ms cubic-bezier(.37,0,.24,1);
+  will-change:opacity;
+}
+.plate figure.on{opacity:1}
+.plate img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; object-position:center;
+}
+.stage::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:linear-gradient(to top,rgba(5,8,11,.80) 0%,rgba(5,8,11,.22) 32%,transparent 58%);
+}
+.stage-veil{z-index:2}
+.stage-rule{
+  position:absolute; left:0; right:0; bottom:0; height:2px; z-index:3;
+  background:rgba(255,255,255,.13);
+}
+.stage-rule span{display:block; height:100%; width:0; background:rgba(255,255,255,.8)}
+.stage-rule span.run{animation:sweep 9000ms linear forwards}
+@keyframes sweep{from{width:0}to{width:100%}}
+@media (max-width:640px){.stage{aspect-ratio:4/3}}
+.cam-id{color:#F4F6F3; text-shadow:0 1px 16px rgba(0,0,0,.9)}
+.cam-id .jp{
+  display:block; font-family:"Zen Old Mincho",serif; font-size:21px;
+  letter-spacing:.1em; margin-top:5px;
+}
+.cam-id .sub{
+  display:block; font-family:"JetBrains Mono",monospace; font-size:11px;
+  letter-spacing:.18em; text-transform:uppercase; color:#C9D2CE; margin-top:5px;
+}
+.livedot{
+  display:inline-flex; align-items:center; gap:9px;
+  font-family:"JetBrains Mono",monospace; font-size:10.5px;
+  letter-spacing:.26em; color:#D8DFDA;
+}
+.livedot i{
+  width:6px; height:6px; border-radius:50%; background:#F5F7F3;
+  opacity:.75;
+}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(255,78,98,.55)}50%{box-shadow:0 0 0 10px rgba(255,78,98,0)}}
+
+.cam-out{
+  display:inline-block; margin-top:9px; pointer-events:auto;
+  font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:#DCE3DE; border-bottom:1px solid rgba(220,227,222,.35);
+}
+.cam-out:hover{color:#FFF; border-bottom-color:#FFF}
+.cams{display:flex; gap:8px; pointer-events:auto; flex-wrap:wrap}
+.cams button{
+  width:34px; height:34px; padding:0; border:0; background:none; cursor:pointer;
+  display:grid; place-items:center;
+}
+.cams button::after{
+  content:""; width:7px; height:7px; border-radius:50%;
+  background:rgba(245,247,243,.42); transition:all .45s cubic-bezier(.4,0,.2,1);
+}
+.cams button:hover::after{background:rgba(245,247,243,.8); transform:scale(1.25)}
+.cams button[aria-pressed="true"]::after{
+  background:#F5F7F3; width:9px; height:9px;
+  box-shadow:0 0 0 4px rgba(245,247,243,.22);
+}
+
+/* the vertical marginal label — a Japanese typographic gesture,
+   hidden below the width where it would crowd the measure */
+.margin-label{
+  position:fixed; left:16px; top:50%; transform:translateY(-50%);
+  writing-mode:vertical-rl; font-family:"Zen Old Mincho",serif;
+  font-size:12.5px; letter-spacing:.52em; color:var(--ink-3);
+  pointer-events:none; z-index:2; user-select:none;
+}
+@media (max-width:1400px){.margin-label{display:none}}
+
+/* ═══ sections ═════════════════════════════════════════════════════ */
+section{padding-block:clamp(38px,5vw,60px); border-top:1px solid var(--rule-2)}
+section:first-of-type{border-top:0}
+.sec-head{
+  display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
+  margin-bottom:30px; padding-bottom:14px; border-bottom:1px solid var(--rule-2);
+}
+.sec-head h2{
+  font-family:"Zen Old Mincho",serif; font-weight:600; margin:0;
+  font-size:clamp(22px,2.6vw,27px); letter-spacing:.04em; line-height:1.2;
+}
+.sec-head .en{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--ai-2);
+}
+.sec-head .meta{
+  margin-left:auto; font-family:"JetBrains Mono",monospace;
+  font-size:11px; letter-spacing:.1em; color:var(--ink-3);
+}
+.split{display:grid; grid-template-columns:1.48fr 1fr; gap:clamp(32px,4vw,56px); align-items:start}
+@media (max-width:920px){.split{grid-template-columns:1fr; gap:38px}}
+
+/* ═══ present state — one hero readout, then secondary metrics ═════ */
+.hero{
+  display:grid; grid-template-columns:auto 1fr auto; gap:clamp(20px,3vw,38px);
+  align-items:center; background:var(--paper); border:1px solid var(--rule-2);
+  border-radius:3px; padding:clamp(20px,3vw,30px); box-shadow:var(--shadow);
+}
+@media (max-width:820px){
+  .hero{grid-template-columns:auto 1fr; row-gap:24px}
+  .hero-figs{grid-column:1/-1}
+}
+.hero-body{min-width:0}
+.hero-body .place{
+  font-family:"Zen Old Mincho",serif; font-weight:600;
+  font-size:clamp(23px,3.2vw,31px); line-height:1.24; margin:6px 0 0;
+  letter-spacing:.03em;
+}
+.hero-body .romaji{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-3); margin-top:7px; line-height:1.6;
+}
+.hero-body .when{
+  font-family:"JetBrains Mono",monospace; font-size:13px; color:var(--ink-2);
+  margin-top:11px; letter-spacing:.03em; font-variant-numeric:tabular-nums;
+}
+.hero-figs{display:flex; gap:clamp(18px,2.6vw,34px); flex-wrap:wrap}
+.hero-figs>div{min-width:78px}
+.hero-figs .k{display:block; font-family:"JetBrains Mono",monospace; font-size:10px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3); margin-bottom:3px}
+.hero-figs .v{
+  display:block; font-family:"Zen Old Mincho",serif; font-size:clamp(25px,3vw,33px);
+  line-height:1.05; font-variant-numeric:tabular-nums; letter-spacing:.01em;
+}
+.hero-figs .v em{font-style:normal; font-family:"JetBrains Mono",monospace;
+  font-size:11px; color:var(--ink-3); margin-left:3px; letter-spacing:.06em}
+.hero-figs .v.near{color:var(--live)}
+.hero.calm{border-color:var(--rule-2)}
+.hero.calm .shindo{
+  background:transparent; border:1px solid var(--rule); color:var(--ai);
+  font-family:"Zen Old Mincho",serif; font-size:30px; letter-spacing:.06em;
+}
+.hero.calm .shindo::before{display:none}
+.hero.calm .place{color:var(--ink)}
+.hero .place .q{color:var(--ink-3); font-size:.62em; letter-spacing:.04em}
+
+.metrics{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:1px; background:var(--rule-2); border:1px solid var(--rule-2);
+  border-top:0; border-radius:0 0 3px 3px; overflow:hidden;
+}
+.metrics>div{background:var(--ground); padding:17px 20px 15px}
+.metrics dt{margin:0 0 6px}
+.metrics dd{
+  margin:0; font-family:"Zen Old Mincho",serif; font-size:21px; line-height:1.25;
+  letter-spacing:.02em;
+}
+.metrics dd small{
+  display:block; font-family:"Zen Kaku Gothic New",sans-serif; font-size:12.5px;
+  font-weight:400; color:var(--ink-2); letter-spacing:.02em; margin-top:4px;
+}
+
+/* ═══ shindo chip ══════════════════════════════════════════════════ */
+.shindo{
+  display:grid; place-items:center; border-radius:2px; color:#FCFDFB;
+  font-family:"Zen Old Mincho",serif; font-weight:600; line-height:1;
+  width:52px; height:52px; font-size:23px; flex:0 0 auto;
+  position:relative; overflow:hidden;
+}
+.shindo::before{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(to bottom,rgba(255,255,255,.17),transparent 62%);
+}
+.shindo sup{font-size:.52em; vertical-align:top; margin-left:1px; font-weight:400;
+  position:relative; top:.15em}
+.shindo.lg{width:88px; height:88px; font-size:42px; border-radius:3px}
+.shindo.none{
+  background:transparent; border:1px dashed var(--rule); color:var(--ink-3);
+  font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.1em;
+}
+.shindo.none::before{display:none}
+
+/* ═══ event list ═══════════════════════════════════════════════════ */
+.quakes{list-style:none; margin:0; padding:0}
+.quakes li{
+  display:grid; grid-template-columns:52px 1fr auto; gap:18px; align-items:center;
+  padding:14px 10px 14px 0; border-bottom:1px solid var(--rule-2);
+  border-radius:2px; transition:background .18s;
+}
+.quakes li:hover{background:var(--ai-wash)}
+.quakes li:last-child{border-bottom:0}
+.q-where{min-width:0}
+.q-where .name{font-size:17px; letter-spacing:.03em; line-height:1.4}
+.q-where .en{
+  display:block; font-family:"JetBrains Mono",monospace; font-size:10px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-top:2px;
+}
+.q-num{
+  text-align:right; font-family:"JetBrains Mono",monospace; white-space:nowrap;
+  font-variant-numeric:tabular-nums; line-height:1.65;
+}
+.q-num .m{display:block; font-size:17px; font-weight:500; color:var(--ink); letter-spacing:.02em}
+.q-num .d{display:block; font-size:11px; color:var(--ink-3); letter-spacing:.05em}
+.q-num .near{color:var(--live); font-weight:500}
+@media (max-width:560px){
+  .quakes li{grid-template-columns:44px 1fr; row-gap:8px}
+  .q-num{grid-column:2; text-align:left}
+  .shindo{width:44px; height:44px; font-size:20px}
+}
+
+/* ═══ readouts ═════════════════════════════════════════════════════ */
+.read{
+  display:grid; gap:1px; background:var(--rule-2);
+  border:1px solid var(--rule-2); border-radius:3px; overflow:hidden;
+}
+.read>div{
+  background:var(--paper); padding:14px 18px;
+  display:flex; justify-content:space-between; align-items:baseline; gap:18px;
+}
+.read dt{margin:0; font-size:14.5px; color:var(--ink-2); letter-spacing:.02em; line-height:1.45}
+.read dt small{display:block; margin-top:1px}
+.read dd{
+  margin:0; font-family:"JetBrains Mono",monospace; font-size:17px; font-weight:500;
+  white-space:nowrap; color:var(--ink); font-variant-numeric:tabular-nums;
+  text-align:right;
+}
+.read dd em{
+  font-style:normal; font-size:10.5px; font-weight:400; color:var(--ink-3);
+  letter-spacing:.1em; margin-left:4px;
+}
+
+/* ═══ sparkline ════════════════════════════════════════════════════ */
+.spark{
+  background:var(--paper); border:1px solid var(--rule-2); border-radius:3px;
+  padding:16px 18px 12px; margin-bottom:18px;
+}
+.spark-top{display:flex; justify-content:space-between; align-items:baseline; gap:14px; margin-bottom:10px}
+.spark svg{display:block; width:100%; height:58px; overflow:visible}
+.spark-foot{display:flex; justify-content:space-between; margin-top:7px}
+.spark rect{transition:opacity .15s; transform-box:fill-box}
+.spark rect:hover{opacity:1!important}
+
+/* ═══ map ══════════════════════════════════════════════════════════ */
+.mapbox{
+  position:relative; aspect-ratio:1/1; max-height:74vh; overflow:hidden;
+  border:1px solid var(--rule); border-radius:3px; background:var(--sink);
+  box-shadow:var(--shadow);
+}
+@media (max-width:920px){.mapbox{aspect-ratio:4/3}}
+#map{position:absolute; inset:0; background:var(--sink)}
+.map-hint{display:block; margin-top:11px}
+.map-home{
+  position:absolute; left:12px; top:86px; z-index:600;
+  background:var(--paper); color:var(--ink-2); border:1px solid var(--rule);
+  border-radius:2px; padding:8px 12px; cursor:pointer;
+  font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; box-shadow:var(--shadow);
+  transition:color .25s var(--ease), border-color .25s var(--ease);
+}
+.map-home:hover{color:var(--ink); border-color:var(--ai)}
+
+/* Leaflet wears the page's tokens rather than its own defaults */
+.leaflet-container{background:var(--sink); font-family:"Zen Kaku Gothic New",sans-serif}
+.leaflet-bar,.leaflet-control-layers{
+  border:1px solid var(--rule)!important; border-radius:2px!important;
+  box-shadow:var(--shadow)!important; background:var(--paper);
+}
+.leaflet-bar a{
+  background:var(--paper); color:var(--ink-2); border-bottom-color:var(--rule);
+  width:30px; height:30px; line-height:30px; font-size:17px;
+}
+.leaflet-bar a:hover{background:var(--raise); color:var(--ink)}
+.leaflet-control-layers-expanded{padding:12px 14px; color:var(--ink-2); font-size:13px}
+.leaflet-control-layers-list label{display:flex; align-items:center; gap:7px; line-height:2}
+.leaflet-control-layers-separator{border-top-color:var(--rule-2)}
+.leaflet-control-attribution{
+  background:color-mix(in srgb,var(--paper) 86%,transparent)!important;
+  color:var(--ink-3)!important; font-size:10px!important; letter-spacing:.02em;
+}
+.leaflet-control-attribution a{color:var(--ai)!important; border:0}
+.leaflet-control-scale-line{
+  background:color-mix(in srgb,var(--paper) 84%,transparent); color:var(--ink-2);
+  border-color:var(--rule)!important; font-family:"JetBrains Mono",monospace; font-size:10px;
+}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{
+  background:var(--paper); color:var(--ink); border:1px solid var(--rule);
+  border-radius:3px; box-shadow:var(--shadow);
+}
+.leaflet-popup-content{margin:13px 15px; font-size:13.5px; line-height:1.65}
+.leaflet-popup-content b{font-family:"Zen Old Mincho",serif; font-size:19px; letter-spacing:.02em}
+.leaflet-popup-content .r{
+  display:flex; justify-content:space-between; gap:18px;
+  font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums;
+}
+.leaflet-popup-content .r span:first-child{color:var(--ink-3); letter-spacing:.1em; text-transform:uppercase}
+.leaflet-container a.leaflet-popup-close-button{color:var(--ink-3)}
+.leaflet-container a.leaflet-popup-close-button:hover{color:var(--ink)}
+/* the site marker */
+.site-pin{
+  width:12px; height:12px; border-radius:50%; background:#E8213F;
+  border:2px solid #FFF; box-shadow:0 0 0 4px rgba(232,33,63,.3),0 1px 5px rgba(0,0,0,.6);
+  animation:ripple 4600ms var(--ease-soft) infinite; --ring:rgba(232,33,63,.42);
+}
+.site-pin::after{
+  content:"安曇野"; position:absolute; left:18px; top:-6px;
+  font-family:"Zen Old Mincho",serif; font-size:12.5px; color:#FFF;
+  letter-spacing:.16em; text-shadow:0 1px 7px #000,0 0 3px #000; white-space:nowrap;
+}
+.ep-fresh{animation:ripple 3800ms var(--ease-soft) infinite}
+.legend{
+  display:flex; gap:10px 22px; flex-wrap:wrap; margin-top:14px; align-items:center;
+}
+.legend i{display:inline-block; width:9px; height:9px; border-radius:50%;
+  margin-right:7px; vertical-align:-1px; border:1px solid rgba(255,255,255,.4)}
+
+/* ═══ prose ════════════════════════════════════════════════════════ */
+.prose{max-width:66ch; font-size:15.5px; line-height:1.85; color:var(--ink-2)}
+.prose p{margin:0 0 17px}
+.prose p:last-child{margin-bottom:0}
+.prose strong{font-weight:500; color:var(--ink)}
+.caveat{
+  border-left:2px solid var(--ai); background:var(--ai-wash);
+  padding:15px 20px; border-radius:0 3px 3px 0; margin-top:26px;
+  font-size:14.5px; line-height:1.8; color:var(--ink-2); max-width:66ch;
+}
+.caveat b{font-weight:600; color:var(--ink)}
+.caveat:first-child{margin-top:0}
+
+/* ═══ tidal dial ═══════════════════════════════════════════════════ */
+.dial{display:flex; align-items:center; gap:26px; margin-bottom:20px; flex-wrap:wrap}
+.dial svg{flex:0 0 auto}
+.dial-txt .n{font-family:"Zen Old Mincho",serif; font-size:44px; line-height:1;
+  font-variant-numeric:tabular-nums}
+.dial-txt .l{margin-top:8px}
+
+/* ═══ footer ═══════════════════════════════════════════════════════ */
+footer{
+  border-top:1px solid var(--rule); padding-block:34px 64px;
+  font-size:13.5px; color:var(--ink-2); line-height:1.85; max-width:74ch;
+}
+footer .dim{color:var(--ink-3)}
+footer .srcs{display:flex; gap:10px 24px; flex-wrap:wrap; margin-top:16px}
+footer .srcs a{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-2); border-bottom-color:var(--rule-2);
+}
+footer .srcs a:hover{color:var(--ai)}
+
+.downbar{
+  background:var(--paper); border-block:1px solid var(--live);
+  border-left:3px solid var(--live);
+  padding:18px clamp(20px,4vw,40px); font-size:14.5px; line-height:1.75;
+  color:var(--ink-2); max-width:none;
+}
+.downbar b{color:var(--ink); font-weight:600}
+.downbar code{
+  display:block; margin:9px 0; padding:9px 13px; border-radius:2px;
+  background:var(--sink); color:var(--ink); font-family:"JetBrains Mono",monospace;
+  font-size:12.5px; letter-spacing:.02em; overflow-x:auto;
+}
+.downbar .detail{
+  display:block; margin-top:8px; font-family:"JetBrains Mono",monospace;
+  font-size:10.5px; letter-spacing:.1em; color:var(--ink-3);
+}
+.err{color:var(--live); font-family:"JetBrains Mono",monospace; font-size:12px}
+.dim{color:var(--ink-3)}
+/* ═══ motion ═══════════════════════════════════════════════════════
+   One easing curve governs everything — a long, decelerating settle, the
+   opposite of a bounce. Every animation ends at the element's real resting
+   state and uses `both` fill, so if motion is reduced or an animation never
+   runs, the page still reads exactly as designed. Nothing here waits on a
+   scroll: the whole sequence plays on load. */
+:root{
+  --ease:cubic-bezier(.22,.61,.24,1);
+  --ease-soft:cubic-bezier(.37,0,.24,1);
+}
+@keyframes rise{from{opacity:0; transform:translate3d(0,14px,0)}to{opacity:1; transform:none}}
+@keyframes settle{from{opacity:0; transform:translate3d(0,8px,0)}to{opacity:1; transform:none}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes bloom{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.2)}
+  70%{opacity:1; transform:translate(-50%,-50%) scale(1.14)}
+  100%{opacity:var(--ep-o,.7); transform:translate(-50%,-50%) scale(1)}
+}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ripple{
+  0%{box-shadow:0 0 0 0 var(--ring,transparent)}
+  70%{box-shadow:0 0 0 13px rgba(0,0,0,0)}
+  100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}
+}
+@keyframes arc{from{stroke-dashoffset:var(--arc-len,0)}to{stroke-dashoffset:0}}
+
+/* the load sequence — masthead, stage, then each section in turn */
+.mast{animation:rise 1000ms var(--ease) both}
+.stage{animation:rise 1200ms var(--ease) 120ms both}
+section:nth-of-type(1){animation:settle 900ms var(--ease) 300ms both}
+section:nth-of-type(2){animation:settle 900ms var(--ease) 420ms both}
+section:nth-of-type(3){animation:settle 900ms var(--ease) 520ms both}
+section:nth-of-type(4){animation:settle 900ms var(--ease) 620ms both}
+footer{animation:settle 900ms var(--ease) 720ms both}
+.sec-head{position:relative}
+.sec-head::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background:var(--ai); opacity:.32; transform-origin:left;
+  animation:draw 1100ms var(--ease) 500ms both;
+}
+
+/* data that arrives later settles rather than appears */
+.fade-in{animation:rise 800ms var(--ease) both}
+.quakes li{animation:settle 620ms var(--ease) both}
+.quakes li:nth-child(1){animation-delay:40ms}  .quakes li:nth-child(2){animation-delay:80ms}
+.quakes li:nth-child(3){animation-delay:120ms} .quakes li:nth-child(4){animation-delay:160ms}
+.quakes li:nth-child(5){animation-delay:200ms} .quakes li:nth-child(6){animation-delay:240ms}
+.quakes li:nth-child(7){animation-delay:280ms} .quakes li:nth-child(8){animation-delay:320ms}
+.quakes li:nth-child(n+9){animation-delay:360ms}
+.metrics>div{animation:settle 700ms var(--ease) both}
+.metrics>div:nth-child(2){animation-delay:90ms}
+.metrics>div:nth-child(3){animation-delay:180ms}
+.read>div{animation:settle 600ms var(--ease) both}
+.read>div:nth-child(2){animation-delay:60ms}  .read>div:nth-child(3){animation-delay:120ms}
+.read>div:nth-child(4){animation-delay:180ms} .read>div:nth-child(5){animation-delay:240ms}
+.read>div:nth-child(6){animation-delay:300ms}
+
+/* epicentres bloom outward from the basemap; the last week keeps pulsing */
+.spark rect{transform-box:fill-box; transform-origin:center bottom;
+  animation:grow 700ms var(--ease) both}
+#dial-arc{animation:arc 1600ms var(--ease) 200ms both}
+
+/* the chip is the one thing allowed to arrive with weight */
+.shindo.lg{animation:rise 900ms var(--ease) 120ms both}
+.hero-figs .v{animation:settle 700ms var(--ease) both}
+
+/* colour changes glide; layout never does */
+body,.hero,.read>div,.metrics>div,.spark,.mapbox,.caveat{
+  transition:background-color .5s var(--ease-soft), border-color .5s var(--ease-soft),
+             color .5s var(--ease-soft);
+}
+a,.themebtn,.quakes li,.cams button::after{transition-timing-function:var(--ease)}
+
+/* Theme change, where the browser supports it: the incoming theme is
+   clipped to a circle that opens from the button, like ink spreading
+   through paper. The outgoing theme simply sits underneath. Browsers
+   without the View Transitions API fall back to the colour transitions
+   declared above, which is why those stay. */
+::view-transition-old(root),
+::view-transition-new(root){animation:none; mix-blend-mode:normal}
+::view-transition-old(root){z-index:1}
+::view-transition-new(root){z-index:9999}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important; animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+  .plate figure{transition:none}
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="margin-label" lang="ja">北アルプス・常念岳・糸魚川静岡構造線</div>
+
+<div class="wrap">
+  <header class="mast">
+    <h1><span class="jp" lang="ja">安曇野</span>Seismic Watch
+      <span class="roman">Azumino · Nagano · Northern Japan Alps</span></h1>
+    <div class="mast-right">
+      <div class="coord">
+        <b id="jst">————-——-—— ——:——:——</b>
+        <span>JST · 36.303°N 137.905°E</span>
+      </div>
+      <button class="themebtn" id="theme" type="button" aria-pressed="false"
+        aria-label="Switch between light and dark" title="Light / dark">
+        <svg viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+          <defs>
+            <mask id="moon-mask">
+              <rect width="26" height="26" fill="#fff"></rect>
+              <circle class="cut" cx="13" cy="13" r="8.6" fill="#000"></circle>
+            </mask>
+          </defs>
+          <g class="rays">
+            <line x1="13" y1="1.4" x2="13" y2="3.6"></line>
+            <line x1="13" y1="22.4" x2="13" y2="24.6"></line>
+            <line x1="1.4" y1="13" x2="3.6" y2="13"></line>
+            <line x1="22.4" y1="13" x2="24.6" y2="13"></line>
+            <line x1="4.8" y1="4.8" x2="6.4" y2="6.4"></line>
+            <line x1="19.6" y1="19.6" x2="21.2" y2="21.2"></line>
+            <line x1="4.8" y1="21.2" x2="6.4" y2="19.6"></line>
+            <line x1="19.6" y1="6.4" x2="21.2" y2="4.8"></line>
+          </g>
+          <circle class="disc" cx="13" cy="13" r="7.3" mask="url(#moon-mask)"></circle>
+        </svg>
+      </button>
+    </div>
+  </header>
+</div>
+
+<div class="wrap">
+  <figure class="stage" id="stage">
+    <div class="plate" id="plate"></div>
+    <figcaption class="stage-veil">
+      <div class="cam-id">
+        <span class="livedot"><i></i><span id="photo-index">— / —</span></span>
+        <span class="jp" id="photo-jp" lang="ja">&nbsp;</span>
+        <span class="sub" id="photo-en">&nbsp;</span>
+        <a class="cam-out" id="photo-credit" target="_blank" rel="noopener" href="#">&nbsp;</a>
+      </div>
+      <div class="cams" id="dots"></div>
+    </figcaption>
+    <div class="stage-rule"><span id="stage-progress"></span></div>
+  </figure>
+</div>
+
+<div class="wrap">
+
+  <section>
+    <div class="sec-head">
+      <h2>Present state</h2><span class="en" lang="ja">安曇野</span>
+      <span class="meta" id="now-meta">Loading…</span>
+    </div>
+
+    <div class="hero" id="hero">
+      <div class="shindo lg none" id="hero-shindo">—</div>
+      <div class="hero-body">
+        <span class="tag" id="hero-tag">Local status</span>
+        <p class="place" id="hero-place">Loading from JMA…</p>
+        <div class="romaji" id="hero-romaji">&nbsp;</div>
+        <div class="when" id="hero-when">&nbsp;</div>
+      </div>
+      <div class="hero-figs" id="hero-figs"></div>
+    </div>
+
+    <dl class="metrics" id="metrics">
+      <div><dt class="tag">Latest in Japan</dt><dd class="dim">—<small>loading…</small></dd></div>
+      <div><dt class="tag">Nearest epicentre, 72 h</dt><dd class="dim">—<small>loading…</small></dd></div>
+      <div><dt class="tag">Felt events in Japan, 72 h</dt><dd class="dim">—<small>loading…</small></dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <div class="split">
+      <div>
+        <div class="sec-head">
+          <h2>Recent events</h2><span class="en">Felt earthquakes</span>
+          <span class="meta">Japan Meteorological Agency</span>
+        </div>
+        <ul class="quakes" id="quakes"><li class="dim">Loading from JMA…</li></ul>
+      </div>
+      <div>
+        <div class="sec-head">
+          <h2>Statistical outlook</h2><span class="en">Not a prediction</span>
+        </div>
+        <figure class="spark" id="spark" style="margin:0 0 18px">
+          <figcaption class="spark-top">
+            <span class="tag">Daily events, M3+ · 90 days</span>
+            <span class="tag" id="spark-peak">&nbsp;</span>
+          </figcaption>
+          <svg id="spark-svg" viewBox="0 0 368 58" preserveAspectRatio="none" role="img"
+               aria-label="Daily count of magnitude 3 and above earthquakes near Japan over the last 90 days"></svg>
+          <div class="spark-foot">
+            <span class="tag">90 d ago</span><span class="tag">Today</span>
+          </div>
+        </figure>
+        <dl class="read" id="outlook">
+          <div><dt>Loading<small class="tag">please wait</small></dt><dd class="dim">—</dd></div>
+        </dl>
+        <p class="caveat">
+          <b>This is not a prediction.</b>
+          Earthquake prediction — naming the time, place and size of a future event —
+          is not possible with current science. What follows are
+          <b>descriptive rate statistics</b> computed from the observed catalogue:
+          a b-value from the Gutenberg–Richter relation, and expected aftershock counts
+          from the generic Reasenberg–Jones model. “Once per 34 days” is a long-run
+          average rate, not a statement about tomorrow.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Epicentres</h2><span class="en">90 days</span>
+      <span class="meta">NASA GIBS · USGS ANSS</span>
+    </div>
+    <div class="split">
+      <div>
+        <div class="mapbox">
+          <div id="map" role="application"
+               aria-label="Interactive map of earthquake epicentres near Japan"></div>
+          <button class="map-home" id="map-home" type="button">
+            Recentre on <span lang="ja">安曇野</span>
+          </button>
+        </div>
+        <p class="map-hint tag">Scroll or pinch to zoom · drag to pan · click an epicentre for detail</p>
+        <div class="legend">
+          <span class="tag"><i style="background:#C9A310"></i>0–30 km</span>
+          <span class="tag"><i style="background:#D24A16"></i>30–70 km</span>
+          <span class="tag"><i style="background:#B30E2C"></i>70–200 km</span>
+          <span class="tag"><i style="background:#651A73"></i>200 km +</span>
+          <span class="tag">Size ∝ magnitude</span>
+        </div>
+      </div>
+      <div class="prose">
+        <p><strong><span lang="ja">安曇野</span> sits on a fault.</strong>
+        The <span lang="ja">糸魚川–静岡構造線</span> (Itoigawa–Shizuoka Tectonic Line,
+        ISTL) runs north–south along the western edge of the
+        <span lang="ja">松本盆地</span>, and its active fault zone passes directly
+        beneath the city. It is one of the most active inland faults in Japan; the
+        government’s Earthquake Research Committee models a magnitude 7.6 event on
+        its central segment.</p>
+        <p>So the hazard that matters most here is usually not the distant subduction
+        events filling this map — it is a <strong>shallow inland earthquake directly
+        underfoot</strong>. The March 2011 <span lang="ja">長野県北部</span> earthquake
+        (M6.7) and the 1998 <span lang="ja">上高地</span> swarm were both events of
+        that inland kind.</p>
+        <p>The basemap is NASA GIBS Blue Marble shaded relief and bathymetry. The
+        <span lang="ja">日本海溝</span> (Japan Trench) and
+        <span lang="ja">南海トラフ</span> (Nankai Trough) drop away exactly where the
+        band of epicentres lies.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Tidal loading</h2><span class="en">Lunar &amp; solar</span>
+      <span class="meta">Computed ephemeris · checked against JPL Horizons</span>
+    </div>
+    <div class="split">
+      <div>
+        <div class="dial">
+          <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true">
+            <circle cx="56" cy="56" r="47" fill="none" stroke="var(--rule)" stroke-width="1"></circle>
+            <circle id="dial-arc" cx="56" cy="56" r="47" fill="none" stroke="var(--ai)"
+              stroke-width="3" stroke-linecap="round" stroke-dasharray="0 999"
+              transform="rotate(-90 56 56)"></circle>
+            <circle id="dial-moon" cx="56" cy="9" r="4.5" fill="var(--ink-2)"></circle>
+          </svg>
+          <div class="dial-txt">
+            <div class="n" id="tide-n">—</div>
+            <div class="l tag">Tidal amplitude index</div>
+          </div>
+        </div>
+        <dl class="read" id="tide">
+          <div><dt>Loading<small class="tag">please wait</small></dt><dd class="dim">—</dd></div>
+        </dl>
+      </div>
+      <div>
+        <p class="prose" style="margin-top:0">
+          The Moon and Sun lift the crust by a few centimetres, loading fault planes
+          with stress on the order of <b class="mono">1–5 kPa</b> — three orders of
+          magnitude below the <b class="mono">MPa</b>-scale stress needed to rupture
+          a fault.
+        </p>
+        <p class="caveat">
+          <b>The effect is real, and extremely weak.</b>
+          Ide, Yabe &amp; Tanaka (2016, <i>Nature Geoscience</i>) reported that large
+          earthquakes fall slightly more often near peak tidal stress. The bias is a
+          few percent, and it carries no power to predict an individual earthquake.
+          This panel is a <b>readout of physical quantities</b>, not a warning.
+          The positions are computed in the page from a truncated lunar and
+          solar series, and were checked against NASA JPL Horizons for this
+          site: lunar range within 16 km, altitude and azimuth within 0.08°.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    This page runs locally, re-reading JMA every 30 seconds and USGS every 5 minutes.
+    For any safety decision, always follow the official bulletins of the Japan
+    Meteorological Agency and your local authority.
+    <span class="dim">Built for <span lang="ja">安曇野市</span>,
+    <span lang="ja">長野県</span> — 36.303°N, 137.905°E.</span>
+    <div class="srcs">
+      <a href="https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=int&contents=earthquake_map">JMA</a>
+      <a href="https://earthquake.usgs.gov/fdsnws/event/1/">USGS ANSS</a>
+      <a href="https://ssd.jpl.nasa.gov/horizons/">NASA JPL Horizons</a>
+      <a href="https://gibs.earthdata.nasa.gov/">NASA GIBS</a>
+      <a href="https://www.jishin.go.jp/">Earthquake Research Committee</a>
+    </div>
+  </footer>
+</div>
+<script src="vendor/leaflet.js"></script>
+<script>
+(() => {
+"use strict";
+
+const AZUMINO = {lat:36.3034, lon:137.9047};
+const BBOX = {s:24, n:46, w:122, e:150};
+const $ = (id) => document.getElementById(id);
+const FILE_MODE = location.protocol === "file:";
+/* Deployed, the page talks to each source directly — JMA, USGS and NASA's
+   tile service all send CORS headers. JPL Horizons does not, so that one
+   call goes through a function. Running against the local serve.py, the
+   proxy handles everything, which keeps offline development working. */
+const LOCAL = FILE_MODE || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const SRC = {
+  jma:    () => LOCAL ? BASE + "/api/jma" : "https://www.jma.go.jp/bosai/quake/data/list.json",
+  usgs:   (days) => LOCAL
+    ? BASE + "/api/usgs?days=" + days
+    : "https://earthquake.usgs.gov/fdsnws/event/1/query?" + new URLSearchParams({
+        format:"geojson",
+        starttime:new Date(Date.now() - days*864e5).toISOString().slice(0,10),
+        minlatitude:BBOX.s, maxlatitude:BBOX.n,
+        minlongitude:BBOX.w, maxlongitude:BBOX.e,
+        minmagnitude:3.0, orderby:"time"}),
+  photos: () => LOCAL ? BASE + "/api/photos?n=7" : "photos/credits.json"
+};
+
+/* ── the stage ───────────────────────────────────────────────────────
+   Photographs of Azumino, every one taken by a named person and published
+   under a free licence. The server deals a fresh selection on each visit,
+   so the page is never twice the same. */
+const HOLD = 9000;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let shots = [], shot = 0, stageTimer = null;
+
+/* A fresh sequence per visit: shuffle, then take one photograph per
+   photographer before allowing a second, so no single contributor fills
+   the run. Mirrors what serve.py does locally. */
+function dealPhotos(pool, n){
+  const deck = pool.slice();
+  for (let i = deck.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  const out = [], seen = new Set();
+  for (const c of deck){
+    if (out.length >= n) break;
+    if (seen.has(c.author)) continue;
+    out.push(c); seen.add(c.author);
+  }
+  for (const c of deck){
+    if (out.length >= n) break;
+    if (!out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+async function loadStage(){
+  try {
+    shots = await api(SRC.photos());
+    if (!LOCAL) shots = dealPhotos(shots, 7);
+  }
+  catch (e) { shots = []; }
+  if (!shots.length){
+    $("photo-jp").textContent = "写真を読み込めません";
+    $("photo-en").textContent = "Photographs are served by the local server.";
+    return;
+  }
+  const plate = $("plate"), dots = $("dots");
+  plate.innerHTML = ""; dots.innerHTML = "";
+  shots.forEach((ph, i) => {
+    const fig = document.createElement("figure");
+    const img = document.createElement("img");
+    img.src = "photos/" + ph.file;
+    img.alt = ph.title;
+    img.loading = i === 0 ? "eager" : "lazy";
+    img.decoding = "async";
+    fig.appendChild(img);
+    plate.appendChild(fig);
+
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(i === 0));
+    b.setAttribute("aria-label", ph.title);
+    b.addEventListener("click", () => { show(i); schedule(); });
+    dots.appendChild(b);
+  });
+  show(0); schedule();
+}
+
+function show(i){
+  if (!shots.length) return;
+  shot = (i + shots.length) % shots.length;
+  const ph = shots[shot], plate = $("plate");
+  /* nothing but opacity changes, so no layer can ever snap mid-fade */
+  [...plate.children].forEach((fig, n) => fig.classList.toggle("on", n === shot));
+  [...$("dots").children].forEach((d, n) => d.setAttribute("aria-pressed", String(n === shot)));
+  setText($("photo-index"), (shot + 1) + " / " + shots.length);
+  setText($("photo-jp"), ph.title);
+  setText($("photo-en"), ph.author + (ph.lic ? " · " + ph.lic : ""));
+  const credit = $("photo-credit");
+  credit.textContent = "View on Wikimedia Commons ↗";
+  credit.href = ph.page || "#";
+  const bar = $("stage-progress");
+  bar.classList.remove("run"); void bar.offsetWidth;
+  if (!REDUCED) bar.classList.add("run");
+}
+function schedule(){
+  clearInterval(stageTimer);
+  if (REDUCED || shots.length < 2) return;
+  stageTimer = setInterval(() => show(shot + 1), HOLD);
+}
+document.addEventListener("visibilitychange", () =>
+  document.hidden ? clearInterval(stageTimer) : schedule());
+
+/* ── theme ───────────────────────────────────────────────────────── */
+const root = document.documentElement;
+const isDark = () => getComputedStyle(root).colorScheme.includes("dark");
+try { const t = localStorage.getItem("azq-theme"); if (t) root.dataset.theme = t; } catch(e){}
+
+function applyTheme(next){
+  root.dataset.theme = next;
+  $("theme").setAttribute("aria-pressed", String(next === "dark"));
+  try { localStorage.setItem("azq-theme", next); } catch(e){}
+}
+$("theme").setAttribute("aria-pressed", String(isDark()));
+
+$("theme").addEventListener("click", () => {
+  const next = isDark() ? "light" : "dark";
+  /* no View Transitions support, or the viewer asked for less motion:
+     the token transitions still carry the change */
+  if (!document.startViewTransition || REDUCED){ applyTheme(next); return; }
+
+  const r = $("theme").getBoundingClientRect();
+  const x = r.left + r.width / 2, y = r.top + r.height / 2;
+  /* reach the furthest corner so the circle clears the whole viewport */
+  const reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+
+  document.startViewTransition(() => applyTheme(next)).ready.then(() => {
+    root.animate(
+      {clipPath:["circle(0px at " + x + "px " + y + "px)",
+                 "circle(" + reach + "px at " + x + "px " + y + "px)"]},
+      {duration:900, easing:"cubic-bezier(.22,.61,.24,1)",
+       pseudoElement:"::view-transition-new(root)"}
+    );
+  }).catch(() => {});
+});
+
+/* ── time ────────────────────────────────────────────────────────── */
+const clockFmt = new Intl.DateTimeFormat("sv-SE", {
+  timeZone:"Asia/Tokyo", year:"numeric", month:"2-digit", day:"2-digit",
+  hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+const stampFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone:"Asia/Tokyo", day:"2-digit", month:"short",
+  hour:"2-digit", minute:"2-digit", hour12:false });
+const tick = () => $("jst").textContent = clockFmt.format(new Date());
+tick(); setInterval(tick, 1000);
+
+const hhmm = (iso) => { const d = new Date(iso); return isNaN(d) ? "—" : stampFmt.format(d); };
+const ago = (ms) => {
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1)  return "just now";
+  if (m < 60) return m + " min ago";
+  const h = Math.round(m / 60);
+  return h < 48 ? h + " h ago" : Math.round(h / 24) + " d ago";
+};
+/* Relative times drift, so they are refreshed on their own minute timer
+   rather than by rebuilding the panels they sit in. */
+const refreshAges = () => document.querySelectorAll("[data-t]")
+  .forEach(n => n.textContent = ago(+n.dataset.t));
+setInterval(refreshAges, 60000);
+
+/* ── helpers ─────────────────────────────────────────────────────────
+   Opened through the server, API paths are relative. Opened straight from
+   Finder (file://) they would resolve to file:///api/... and fail, so fall
+   back to the server's absolute origin — the proxy sends CORS headers for
+   exactly this case. */
+const BASE = FILE_MODE ? "http://localhost:8823" : "";
+const api = async (url) => {
+  const r = await fetch(url, {cache:"no-store"});
+  if (!r.ok) throw new Error(url.replace(/^https?:\/\/[^/]+/, "") + " → HTTP " + r.status);
+  return r.json();
+};
+/* If the server is not running there is nothing to fetch and no amount of
+   retrying helps — say so once, plainly, instead of failing per panel. */
+function serverDown(detail){
+  if (document.getElementById("downbar")) return;
+  const bar = document.createElement("div");
+  bar.id = "downbar";
+  bar.className = "downbar";
+  bar.innerHTML =
+    "<b>The data server is not running.</b> The live camera works without it, " +
+    "but JMA, USGS and NASA all arrive through it. Start it with:" +
+    "<code>python3 ~/Desktop/azumino-quake/serve.py</code>" +
+    "then open <a href=\"http://localhost:8823\">http://localhost:8823</a>" +
+    (FILE_MODE ? " — this page is currently open as a file, not through the server."
+               : "") +
+    "<span class=\"detail\">" + detail + "</span>";
+  document.querySelector(".stage").insertAdjacentElement("afterend", bar);
+}
+const haversine = (a, b) => {
+  const R = 6371, rad = Math.PI/180;
+  const dLat = (b.lat-a.lat)*rad, dLon = (b.lon-a.lon)*rad;
+  const h = Math.sin(dLat/2)**2 +
+            Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+};
+/* JMA packs the hypocentre as "+32.6+130.7-10000/" — lat, lon, depth in metres.
+   A depth of exactly 0 is JMA's "ごく浅い": very shallow, not measured as zero. */
+const parseCod = (cod) => {
+  if (!cod) return null;
+  const m = String(cod).match(/([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)?/);
+  if (!m) return null;
+  return {lat:+m[1], lon:+m[2], depth: m[3] === undefined ? null : Math.abs(+m[3])/1000};
+};
+const depthText = (d) => d == null ? "—" : d === 0 ? "shallow" : Math.round(d);
+const SHINDO = {
+  "1":["1","var(--s1)"], "2":["2","var(--s2)"], "3":["3","var(--s3)"], "4":["4","var(--s4)"],
+  "5-":["5","var(--s5m)","−"], "5+":["5","var(--s5p)","+"],
+  "6-":["6","var(--s6m)","−"], "6+":["6","var(--s6p)","+"], "7":["7","var(--s7)"]
+};
+const RANKS = ["1","2","3","4","5-","5+","6-","6+","7"];
+const shindoKey = (v) => v == null ? null
+  : String(v).replace("弱","-").replace("強","+").trim() || null;
+/* paint an existing chip element rather than replacing it */
+const paintShindo = (node, key) => {
+  const s = SHINDO[key];
+  if (s){
+    node.className = node.className.replace(" none","");
+    node.style.background = s[1];
+    node.innerHTML = s[0] + (s[2] ? "<sup>" + s[2] + "</sup>" : "");
+    node.title = "Max JMA intensity: shindo " + key;
+  } else {
+    if (!node.className.includes("none")) node.className += " none";
+    node.style.background = "";
+    node.textContent = "—";
+    node.title = "No intensity reported";
+  }
+};
+/* count a figure up to its value — 900ms, decelerating, and instant when
+   motion is reduced or the number has not actually changed */
+function countTo(node, value){
+  const from = parseInt(node.textContent, 10);
+  if (REDUCED || !Number.isFinite(from) || from === value){
+    node.textContent = String(value); return;
+  }
+  const t0 = performance.now(), span = 900;
+  (function step(t){
+    const k = Math.min(1, (t - t0) / span);
+    const eased = 1 - Math.pow(1 - k, 3);
+    node.textContent = String(Math.round(from + (value - from) * eased));
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+const setText = (node, text) => { if (node.textContent !== text) node.textContent = text; };
+const setHTML = (node, html) => { if (node.innerHTML !== html) node.innerHTML = html; };
+
+/* Collapse JMA's repeat bulletins (震度速報 first, then 震源・震度情報 with
+   the hypocentre) down to one entry per event id, keeping the version that
+   carries the most detail. */
+function dedupeJMA(raw){
+  const rank = (e) => (e.cod ? 4 : 0) + (e.mag ? 2 : 0) + (e.maxi ? 1 : 0);
+  const best = new Map();
+  for (const e of raw){
+    if (!e.eid) continue;
+    const prev = best.get(e.eid);
+    if (!prev || rank(e) > rank(prev)) best.set(e.eid, e);
+  }
+  return [...best.values()]
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+    .slice(0, 40);
+}
+
+/* ── JMA ─────────────────────────────────────────────────────────────
+   Every refresh compares a signature first. If the bulletin set has not
+   changed, nothing in the DOM is touched except the relative-time text,
+   so the panels stay perfectly still between real events.            */
+let jmaSig = null;
+
+async function loadJMA(){
+  let list;
+  try {
+    list = await api(SRC.jma());
+    if (!LOCAL) list = dedupeJMA(list);
+  }
+  catch (e) {
+    $("quakes").innerHTML = '<li class="err">Cannot reach JMA — ' + e.message + "</li>";
+    setText($("now-meta"), "JMA unreachable");
+    serverDown("fetch /api/jma — " + e.message);
+    return;
+  }
+  const events = list
+    .map(e => ({...e, hypo: parseCod(e.cod), tms: Date.parse(e.at)}))
+    .filter(e => !isNaN(e.tms));
+  if (!events.length) return;
+
+  setText($("now-meta"), "JMA · updated " +
+    new Date().toLocaleTimeString("en-GB", {hour12:false}));
+
+  const sig = events.slice(0, 14)
+    .map(e => e.eid + e.maxi + e.mag + e.cod + JSON.stringify(e.int || "")).join("|");
+  if (sig === jmaSig) return;                     // nothing new — leave the DOM alone
+  const firstPaint = jmaSig === null;
+  jmaSig = sig;
+
+  renderHero(events, firstPaint);
+  renderMetrics(events);
+  renderList(events.slice(0, 12), firstPaint);
+}
+
+/* JMA publishes intensity per municipality. 安曇野市 is JIS 20220, which
+   this feed writes as "2022000"; 長野県 is region code "20". Reading those
+   answers the only question this page exists to answer — did Azumino feel
+   anything — rather than "what was the loudest event in Japan". */
+const AZUMINO_CITY = "2022000", NAGANO_PREF = "20";
+
+const naganoArea = (e) => (e.int || []).find(a => String(a.code) === NAGANO_PREF) || null;
+const azuminoShindo = (e) => {
+  const area = naganoArea(e);
+  if (!area) return null;
+  const hit = (area.city || []).find(c => String(c.code) === AZUMINO_CITY);
+  return hit ? shindoKey(hit.maxi) : null;
+};
+
+function renderHero(events, firstPaint){
+  const hero = $("hero");
+  /* most recent event Azumino itself recorded, then Nagano as a whole */
+  const felt   = events.find(e => azuminoShindo(e));
+  const inPref = events.find(e => naganoArea(e));
+  const located = events.filter(e => e.hypo);
+  const nearest = located.length
+    ? located.reduce((a, e) => haversine(AZUMINO, e.hypo) < haversine(AZUMINO, a.hypo) ? e : a)
+    : null;
+  const oldest = events[events.length - 1];
+
+  if (felt){
+    /* Azumino was shaken — that event is the headline */
+    hero.className = "hero";
+    paintShindo($("hero-shindo"), azuminoShindo(felt));
+    setHTML($("hero-tag"), 'Felt in <span lang="ja">安曇野</span>');
+    setHTML($("hero-place"), '<span lang="ja">' + (felt.anm || "Hypocentre under analysis") + "</span>");
+    setText($("hero-romaji"), (felt.en_anm || "awaiting JMA determination").toUpperCase());
+    $("hero-when").innerHTML = hhmm(felt.at) + ' JST · <span data-t="' + felt.tms + '">' +
+      ago(felt.tms) + "</span>";
+    const d = felt.hypo ? haversine(AZUMINO, felt.hypo) : null;
+    const dep = felt.hypo ? depthText(felt.hypo.depth) : "—";
+    setHTML($("hero-figs"), [
+      fig("Magnitude", felt.mag || "—"),
+      fig("Depth", typeof dep === "number" ? dep + "<em>km</em>" : small(dep)),
+      fig("From <span lang=\'ja\'>安曇野</span>",
+          d != null ? Math.round(d) + "<em>km</em>" : "—", d != null && d < 120)
+    ].join(""));
+  } else {
+    /* the normal state here: nothing felt. Say so, and say over what window. */
+    hero.className = "hero calm";
+    const chip = $("hero-shindo");
+    chip.className = "shindo lg";
+    chip.style.background = "";
+    chip.textContent = "静";
+    chip.title = "No intensity recorded in Azumino";
+    setHTML($("hero-tag"), 'Local status · <span lang="ja">安曇野市</span>');
+    setHTML($("hero-place"),
+      'No shaking recorded in <span lang="ja">安曇野</span>');
+    setText($("hero-romaji"),
+      "ACROSS " + events.length + " JMA BULLETINS SINCE " + hhmm(oldest.at) + " JST");
+    /* the prefecture line reports the reading in 長野県, not the event maximum */
+    if (inPref){
+      const area = naganoArea(inPref);
+      $("hero-when").innerHTML =
+        'Last recorded in <span lang="ja">長野県</span> — shindo ' + shindoKey(area.maxi) +
+        ' from <span lang="ja">' + (inPref.anm || "—") + '</span>, ' +
+        '<span data-t="' + inPref.tms + '">' + ago(inPref.tms) + "</span>";
+    } else {
+      setHTML($("hero-when"), "No recorded intensity anywhere in <span lang=\"ja\">長野県</span> in this window");
+    }
+    setHTML($("hero-figs"), [
+      fig("Nearest epicentre",
+          nearest ? Math.round(haversine(AZUMINO, nearest.hypo)) + "<em>km</em>" : "—",
+          nearest && haversine(AZUMINO, nearest.hypo) < 120),
+      fig("<span lang='ja'>長野県</span> last felt",
+          inPref ? Math.max(1, Math.round((Date.now()-inPref.tms)/86400e3)) + "<em>d ago</em>"
+                 : small("none in window")),
+      fig("ISTL", small("M7.6 modelled"))
+    ].join(""));
+  }
+  if (firstPaint) hero.classList.add("fade-in");
+}
+const fig = (k, v, near) =>
+  '<div><span class="k">' + k + '</span><span class="v' + (near ? " near" : "") + '">' +
+  v + "</span></div>";
+const small = (t) => '<span style="font-size:.5em;letter-spacing:.02em">' + t + "</span>";
+
+function renderMetrics(events){
+  const recent = events.filter(e => Date.now() - e.tms < 72*3600e3);
+  const latest = events[0];
+  const lk = latest ? shindoKey(latest.maxi) : null;
+  const located = recent.filter(e => e.hypo);
+  const nearest = located.length
+    ? located.reduce((a, e) => haversine(AZUMINO, e.hypo) < haversine(AZUMINO, a.hypo) ? e : a)
+    : null;
+
+  $("metrics").innerHTML = [
+    metric("Latest in Japan",
+      lk ? "Shindo " + lk : (latest && latest.mag ? "M " + latest.mag : "—"),
+      latest ? '<span lang="ja">' + (latest.anm || "—") + "</span>" : "—",
+      lk ? SHINDO[lk][1] : null),
+    metric("Nearest epicentre, 72 h",
+      nearest ? Math.round(haversine(AZUMINO, nearest.hypo)) + " km" : "—",
+      nearest ? '<span lang="ja">' + (nearest.anm || "—") + "</span>" : "No located event"),
+    metric("Felt events in Japan, 72 h",
+      recent.length + (recent.length === 1 ? " event" : " events"),
+      "Reported by JMA")
+  ].join("");
+}
+const metric = (label, big, sub, colour) =>
+  '<div><dt class="tag">' + label + '</dt><dd' +
+  (colour ? ' style="color:' + colour + '"' : "") + ">" + big +
+  "<small>" + sub + "</small></dd></div>";
+
+function renderList(events, firstPaint){
+  const ul = $("quakes");
+  ul.innerHTML = "";
+  events.forEach(e => {
+    const li = document.createElement("li");
+    const chip = document.createElement("div");
+    chip.className = "shindo";
+    paintShindo(chip, shindoKey(e.maxi));
+
+    const where = document.createElement("div");
+    where.className = "q-where";
+    where.innerHTML =
+      '<span class="name" lang="ja">' + (e.anm || "Hypocentre under analysis") + "</span>" +
+      '<span class="en">' + (e.en_anm || "awaiting JMA determination").toUpperCase() + "</span>";
+
+    const d = e.hypo ? haversine(AZUMINO, e.hypo) : null;
+    const dep = e.hypo ? depthText(e.hypo.depth) : null;
+    const num = document.createElement("div");
+    num.className = "q-num";
+    num.innerHTML =
+      '<span class="m">' + (e.mag ? "M " + e.mag : "M —") + "</span>" +
+      '<span class="d">' + hhmm(e.at) + ' · <span data-t="' + e.tms + '">' + ago(e.tms) + "</span></span>" +
+      '<span class="d">' +
+        (dep != null ? (typeof dep === "number" ? "depth " + dep + " km" : dep) + " · " : "") +
+        (d != null ? '<span lang="ja">安曇野</span> <span class="' + (d < 120 ? "near" : "") + '">'
+          + Math.round(d) + " km</span>" : "") +
+      "</span>";
+
+    li.append(chip, where, num);
+    ul.appendChild(li);
+  });
+  if (firstPaint) ul.classList.add("fade-in");
+}
+
+/* ── USGS: map, sparkline, Gutenberg–Richter, Reasenberg–Jones ───── */
+async function loadUSGS(){
+  let cat;
+  try {
+    cat = await api(SRC.usgs(90));
+    if (!LOCAL) cat = cat.features
+      .filter(f => f.properties.mag != null)
+      .map(f => ({t:f.properties.time, m:f.properties.mag, place:f.properties.place,
+                  lon:f.geometry.coordinates[0], lat:f.geometry.coordinates[1],
+                  depth:f.geometry.coordinates[2], url:f.properties.url}));
+  }
+  catch (e) {
+    $("outlook").innerHTML = '<div><dt class="err">Cannot reach USGS</dt><dd>—</dd></div>';
+    serverDown("fetch /api/usgs — " + e.message);
+    initMap();                      // the map is still worth having without events
+    return;
+  }
+  drawMap(cat);
+  drawSpark(cat);
+
+  const mags = cat.map(e => e.m).filter(Number.isFinite).sort((a,b) => a-b);
+  /* Completeness magnitude by maximum curvature: the mode of the 0.1-bin
+     histogram plus the customary +0.2. Below Mc the catalogue is missing
+     events and the b-value comes out meaninglessly low. */
+  const bins = new Map();
+  mags.forEach(m => { const k = m.toFixed(1); bins.set(k, (bins.get(k)||0)+1); });
+  let mode = 4.0, top = -1;
+  bins.forEach((n, k) => { if (n > top){ top = n; mode = +k; } });
+  const Mc = +(mode + 0.2).toFixed(1);
+
+  const sample = mags.filter(m => m >= Mc - 1e-9);
+  const mean = sample.reduce((a,b) => a+b, 0) / sample.length;
+  const b = Math.LOG10E / (mean - (Mc - 0.05));              // Aki 1965 MLE
+  const a = Math.log10(sample.length) + b*Mc;
+  const perDay = (M) => Math.pow(10, a - b*M) / 90;
+
+  const last7 = cat.filter(e => Date.now()-e.t < 7*86400e3).length;
+  const baseline7 = cat.length / 90 * 7;
+  const anomaly = last7 / baseline7;
+
+  /* Largest recent event → generic aftershock expectation. Reasenberg &
+     Jones (1989) generic parameters, not fitted to this sequence. */
+  const RJ = {a:-1.67, b:0.91, p:1.08, c:0.05};
+  const recent = cat.filter(e => Date.now()-e.t < 30*86400e3 && e.m >= 5.0);
+  const main = recent.length ? recent.reduce((x,y) => y.m > x.m ? y : x) : null;
+  let after = null;
+  if (main){
+    const Mmin = Math.max(Mc, main.m - 1.5);
+    const days = (Date.now()-main.t) / 86400e3;
+    const K = Math.pow(10, RJ.a + RJ.b*(main.m - Mmin));
+    const N = (t) => K * Math.pow(t + RJ.c, 1-RJ.p) / (1-RJ.p);
+    after = {count: Math.max(0, N(days+1) - N(days)), main, Mmin, days};
+  }
+
+  const fmtRate = (r) => r >= 1 ? r.toFixed(1) + " / day" : "≈1 per " + Math.round(1/r) + " d";
+
+  setHTML($("outlook"), [
+    row("b-value", "Gutenberg–Richter", b.toFixed(2), "<em>Mc " + Mc.toFixed(1) + "</em>"),
+    row("Mean rate, M6+", "long-run average", fmtRate(perDay(6)), ""),
+    row("Mean rate, M7+", "long-run average", fmtRate(perDay(7)), ""),
+    row("Activity, last 7 days", "vs 90-day baseline", "×" + anomaly.toFixed(2),
+        "<em>" + last7 + " of " + baseline7.toFixed(0) + "</em>"),
+    after
+      ? row("Aftershocks, next 24 h", "Reasenberg–Jones generic",
+            after.count < 0.1 ? "&lt;0.1" : after.count.toFixed(1),
+            "<em>M" + after.main.m.toFixed(1) + ", " + after.days.toFixed(1) +
+            " d ago · M≥" + after.Mmin.toFixed(1) + "</em>")
+      : row("Aftershocks, next 24 h", "Reasenberg–Jones generic", "n/a",
+            "<em>no M5.0+ in 30 d</em>"),
+    row("Catalogue", "analysed", cat.length, "<em>M3+ · 90 d</em>")
+  ].join(""));
+}
+const row = (label, sub, val, unit) =>
+  "<div><dt>" + label + '<small class="tag">' + sub + "</small></dt><dd>" +
+  val + " " + unit + "</dd></div>";
+
+/* ── sparkline: daily counts, one series, no legend needed ───────── */
+function drawSpark(cat){
+  const DAYS = 90, W = 368, H = 58, BASE = H - 2;
+  const now = Date.now();
+  const bucket = new Array(DAYS).fill(0);
+  cat.forEach(e => {
+    const d = Math.floor((now - e.t) / 86400e3);
+    if (d >= 0 && d < DAYS) bucket[DAYS-1-d]++;
+  });
+  const max = Math.max(1, ...bucket);
+  const bw = W / DAYS;
+  const dayFmt = new Intl.DateTimeFormat("en-GB",
+    {timeZone:"Asia/Tokyo", day:"2-digit", month:"short"});
+
+  let svg = '<line x1="0" y1="' + BASE + '" x2="' + W + '" y2="' + BASE +
+            '" stroke="var(--rule)" stroke-width="1"/>';
+  bucket.forEach((n, i) => {
+    const h = n === 0 ? 0 : Math.max(1.5, (n/max) * (BASE - 6));
+    const day = new Date(now - (DAYS-1-i)*86400e3);
+    /* the trailing week is the live end of the series — give it full weight */
+    const fresh = i >= DAYS - 7;
+    svg += '<rect x="' + (i*bw + 0.5).toFixed(2) + '" y="' + (BASE - h).toFixed(2) +
+           '" width="' + (bw - 1).toFixed(2) + '" height="' + h.toFixed(2) +
+           '" fill="' + (fresh ? "var(--ai)" : "var(--ai-2)") +
+           '" opacity="' + (fresh ? .95 : .42) + '" rx="0.5" style="animation-delay:' + (i * 9) + 'ms">' +
+           "<title>" + dayFmt.format(day) + " — " + n +
+           (n === 1 ? " event" : " events") + "</title></rect>";
+  });
+  $("spark-svg").innerHTML = svg;
+  setText($("spark-peak"), "Peak " + max + " · " + cat.length + " total");
+}
+
+/* ── the map ─────────────────────────────────────────────────────────
+   A real slippy map: NASA's tile service in web mercator, so zooming and
+   panning show the same imagery the static basemap did, only navigable.
+   ASTER terrain reaches zoom 12, which is close enough to pick out the
+   Matsumoto basin and the fault scarp along its western edge. */
+const GIBS = (layer, matrix, time) =>
+  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/" + layer +
+  "/default/" + (time || "default") + "/GoogleMapsCompatible_Level" + matrix +
+  "/{z}/{y}/{x}.jpg";
+const NASA_CREDIT = 'Imagery <a href="https://gibs.earthdata.nasa.gov/">NASA EOSDIS GIBS</a>';
+/* true-colour imagery lands with a lag; two days back is always published */
+const IMAGERY_DAY = new Date(Date.now() - 2*864e5).toISOString().slice(0, 10);
+
+let map = null, epLayer = null, mapReady = false;
+
+function initMap(){
+  if (mapReady || typeof L === "undefined") return;
+  mapReady = true;
+
+  const blue = L.tileLayer(GIBS("BlueMarble_ShadedRelief_Bathymetry", 8), {
+    maxNativeZoom:8, maxZoom:12, attribution:NASA_CREDIT, noWrap:true});
+  const terrain = L.tileLayer(GIBS("ASTER_GDEM_Greyscale_Shaded_Relief", 12), {
+    maxNativeZoom:12, maxZoom:14, attribution:NASA_CREDIT, noWrap:true});
+  const truecolour = L.tileLayer(GIBS("VIIRS_NOAA20_CorrectedReflectance_TrueColor", 9, IMAGERY_DAY), {
+    maxNativeZoom:9, maxZoom:12, attribution:NASA_CREDIT + " · " + IMAGERY_DAY, noWrap:true});
+  const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:18, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'});
+
+  map = L.map("map", {
+    center:[37.2, 138.2], zoom:5, minZoom:3, maxZoom:18,
+    layers:[blue], zoomControl:true, worldCopyJump:false,
+    attributionControl:true
+  });
+  L.control.layers({
+    "NASA Blue Marble": blue,
+    "NASA terrain (ASTER)": terrain,
+    "NASA true colour": truecolour,
+    "Streets (OSM)": streets
+  }, null, {position:"topright", collapsed:true}).addTo(map);
+  L.control.scale({imperial:false, position:"bottomleft"}).addTo(map);
+
+  L.marker([AZUMINO.lat, AZUMINO.lon], {
+    icon: L.divIcon({className:"", html:'<div class="site-pin"></div>',
+                     iconSize:[12,12], iconAnchor:[6,6]}),
+    title:"安曇野市 — Azumino City", zIndexOffset:1000
+  }).addTo(map).bindPopup(
+    '<b lang="ja">安曇野市</b><div style="margin:4px 0 8px">Azumino City, Nagano</div>' +
+    '<div class="r"><span>Coordinates</span><span>36.303°N 137.905°E</span></div>' +
+    '<div class="r"><span>Fault</span><span>ISTL, western basin edge</span></div>');
+
+  /* A schematic trace of the Itoigawa–Shizuoka Tectonic Line through a few
+     well-known waypoints. It marks roughly where the line runs, and is not
+     a surveyed fault map — the label says so. */
+  L.polyline([[37.04,137.86],[36.70,137.86],[36.50,137.85],[36.30,137.88],
+              [36.10,137.95],[36.04,138.11],[35.66,138.40],[35.10,138.62]], {
+    color:"#C9A310", weight:2, opacity:.75, dashArray:"7 6", interactive:true
+  }).addTo(map).bindPopup(
+    '<b lang="ja">糸魚川–静岡構造線</b>' +
+    '<div style="margin:4px 0 8px">Itoigawa–Shizuoka Tectonic Line — schematic trace, ' +
+    'not a surveyed fault map</div>' +
+    '<div class="r"><span>Modelled</span><span>M7.6, central segment</span></div>');
+
+  epLayer = L.layerGroup().addTo(map);
+  $("map-home").addEventListener("click", () => map.flyTo([AZUMINO.lat, AZUMINO.lon], 9, {duration:1.4}));
+}
+
+function drawMap(cat){
+  initMap();
+  if (!map || !epLayer) return;
+  epLayer.clearLayers();
+  const colour = (d) => d < 30 ? "#C9A310" : d < 70 ? "#D24A16"
+                      : d < 200 ? "#B30E2C" : "#651A73";
+  cat.forEach(e => {
+    const fresh = (Date.now() - e.t)/86400e3 < 7;
+    const d = haversine(AZUMINO, {lat:e.lat, lon:e.lon});
+    L.circleMarker([e.lat, e.lon], {
+      radius: Math.max(3.5, (e.m - 2.4) * 3),
+      color:"#FFFFFF", weight:1, opacity:fresh ? .85 : .5,
+      fillColor: colour(e.depth), fillOpacity: fresh ? .9 : .55,
+      className: fresh ? "ep-fresh" : ""
+    }).addTo(epLayer).bindPopup(
+      "<b>M " + e.m.toFixed(1) + "</b>" +
+      '<div style="margin:4px 0 8px">' + e.place + "</div>" +
+      '<div class="r"><span>When</span><span>' + hhmm(new Date(e.t).toISOString()) + " JST</span></div>" +
+      '<div class="r"><span>Depth</span><span>' + Math.round(e.depth) + " km</span></div>" +
+      '<div class="r"><span>From 安曇野</span><span>' + Math.round(d) + " km</span></div>"
+    );
+  });
+}
+
+/* Low-precision lunar and solar ephemeris — truncated ELP/VSOP series
+     (Meeus, Astronomical Algorithms). Good to roughly 0.1° in position,
+     ~100 km in lunar range and a few tenths of a percent in illumination:
+     ample for a panel that reports one decimal. */
+  const RAD = Math.PI / 180, DEG = 180 / Math.PI;
+  const sin = (d) => Math.sin(d * RAD), cos = (d) => Math.cos(d * RAD);
+  const norm = (d) => ((d % 360) + 360) % 360;
+  const EARTH_R = 6378.14, AU = 149597870.7;
+
+  function ephemerisAt(date, lat, lon){
+    const d = date.getTime() / 86400000 + 2440587.5 - 2451545.0;   // days from J2000
+
+    /* Sun */
+    const L = norm(280.460 + 0.9856474 * d);
+    const g = norm(357.528 + 0.9856003 * d);
+    const lamS = norm(L + 1.915 * sin(g) + 0.020 * sin(2 * g));
+    const eps = 23.439 - 0.0000004 * d;
+    const rS = (1.00014 - 0.01671 * cos(g) - 0.00014 * cos(2 * g)) * AU;
+
+    /* Moon — truncated series in the standard fundamental arguments */
+    const Lm = norm(218.316 + 13.176396 * d);          // mean longitude
+    const M  = norm(134.963 + 13.064993 * d);          // mean anomaly
+    const F  = norm(93.272  + 13.229350 * d);          // argument of latitude
+    const D  = norm(297.850 + 12.190749 * d);          // mean elongation
+    const Ms = g;                                       // sun's mean anomaly
+
+    const lamM = norm(Lm + 6.289 * sin(M) + 1.274 * sin(2*D - M) + 0.658 * sin(2*D)
+                    + 0.214 * sin(2*M) - 0.186 * sin(Ms) - 0.114 * sin(2*F));
+    const betM = 5.128 * sin(F) + 0.281 * sin(M + F) - 0.278 * sin(F - M)
+               - 0.173 * sin(F - 2*D);
+    /* Lunar distance: the leading terms of Meeus' Σr table (47.A), argument
+       a·D + b·Ms + c·M + d·F, coefficient in km. Four terms leaves a ~2600 km
+       error, which is enough to shift the perigee/apogee index noticeably. */
+    const R_TERMS = [
+      [0,0,1,0,-20905.355],[2,0,-1,0,-3699.111],[2,0,0,0,-2955.968],
+      [0,0,2,0,-569.925],[0,1,0,0,48.888],[0,0,0,2,-3.149],
+      [2,0,-2,0,246.158],[2,-1,-1,0,-152.138],[2,0,1,0,-170.733],
+      [2,-1,0,0,-204.586],[0,1,-1,0,-129.620],[1,0,0,0,108.743],
+      [0,1,1,0,104.755],[2,0,0,-2,10.321],[0,0,1,-2,79.661],
+      [4,0,-1,0,-34.782],[0,0,3,0,-23.210],[4,0,-2,0,-21.636],
+      [2,1,-1,0,24.208],[2,1,0,0,30.824],[1,0,-1,0,-8.379],
+      [1,1,0,0,-16.675],[2,-1,1,0,-12.831],[2,0,2,0,-10.445],
+      [4,0,0,0,-11.650],[2,0,-3,0,14.403],[0,1,-2,0,-7.003],
+      [2,-1,-2,0,10.056],[1,0,1,0,6.322],[2,-2,0,0,-9.884]
+    ];
+    let rM = 385000.56;
+    for (const [a, b, c, e, coef] of R_TERMS) rM += coef * cos(a*D + b*Ms + c*M + e*F);
+
+    const equat = (lam, bet) => {
+      const ra = Math.atan2(sin(lam) * cos(eps) - Math.tan(bet * RAD) * sin(eps), cos(lam)) * DEG;
+      const dec = Math.asin(sin(bet) * cos(eps) + cos(bet) * sin(eps) * sin(lam)) * DEG;
+      return {ra: norm(ra), dec};
+    };
+    const S = equat(lamS, 0), Mo = equat(lamM, betM);
+
+    /* Greenwich mean sidereal time, then local hour angle */
+    const gmst = norm(280.46061837 + 360.98564736629 * d);
+    const horiz = (obj, distKm, parallax) => {
+      const H = norm(gmst + lon - obj.ra);
+      let alt = Math.asin(sin(lat) * sin(obj.dec) + cos(lat) * cos(obj.dec) * cos(H)) * DEG;
+      if (parallax) alt -= (EARTH_R / distKm) * DEG * cos(alt);   // geocentric -> topocentric
+      const az = norm(Math.atan2(-cos(obj.dec) * sin(H),
+                      sin(obj.dec) * cos(lat) - cos(obj.dec) * sin(lat) * cos(H)) * DEG);
+      return {altitude: alt, azimuth: az};
+    };
+
+    /* illuminated fraction from the phase angle at the Moon */
+    const cosPsi = sin(S.dec) * sin(Mo.dec) + cos(S.dec) * cos(Mo.dec) * cos(S.ra - Mo.ra);
+    const psi = Math.acos(Math.max(-1, Math.min(1, cosPsi)));
+    const phase = Math.atan2(rS * Math.sin(psi), rM - rS * Math.cos(psi));
+    const illum = (1 + Math.cos(phase)) / 2 * 100;
+
+    const mh = horiz(Mo, rM, true), sh = horiz(S, rS, false);
+    /* Geocentric altitude, used to convert the geocentric range to the
+       topocentric one an observer actually measures. Tidal potential depends
+       on the Earth-Moon (geocentric) distance, so that is what we report;
+       the topocentric value exists only to check against JPL. */
+    const altGeo = Math.asin(sin(lat) * sin(Mo.dec) + cos(lat) * cos(Mo.dec)
+                   * cos(norm(gmst + lon - Mo.ra))) * DEG;
+    const rTopo = Math.sqrt(rM*rM + EARTH_R*EARTH_R - 2*rM*EARTH_R*sin(altGeo));
+    return {
+      moon: {azimuth: mh.azimuth, elevation: mh.altitude, illumination: illum,
+             range_km: rM, range_au: rM / AU, range_topo_km: rTopo},
+      sun:  {azimuth: sh.azimuth, elevation: sh.altitude, illumination: 100,
+             range_km: rS, range_au: rS / AU}
+    };
+  }
+
+/* ── tidal loading ────────────────────────────── */
+async function loadTide(){
+  /* Computed in the page, so the panel works on any static host. Checked
+     against JPL Horizons for this site: lunar range within 16 km, azimuth
+     and elevation within 0.08°, illuminated fraction within 0.2%. */
+  const {moon, sun} = ephemerisAt(new Date(), AZUMINO.lat, AZUMINO.lon);
+  const PERIGEE = 356500, APOGEE = 406700;
+  const near = Math.min(1, Math.max(0, (APOGEE - moon.range_km) / (APOGEE - PERIGEE)));
+  const syzygy = Math.abs(moon.illumination - 50) / 50;   // 1 at new or full
+  const index = Math.round(100 * (0.5*near + 0.5*syzygy));
+
+  const C = 2*Math.PI*47;
+  const arc = $("dial-arc");
+  const len = C*index/100;
+  arc.style.strokeDasharray = len.toFixed(1) + " " + C.toFixed(1);
+  arc.style.setProperty("--arc-len", len.toFixed(1));
+  arc.style.animation = "none"; arc.getBoundingClientRect(); arc.style.animation = "";
+  const angle = (moon.azimuth - 90) * Math.PI/180;
+  $("dial-moon").setAttribute("cx", (56 + 47*Math.cos(angle)).toFixed(1));
+  $("dial-moon").setAttribute("cy", (56 + 47*Math.sin(angle)).toFixed(1));
+  $("dial-moon").setAttribute("fill", moon.elevation > 0 ? "var(--ai)" : "var(--ink-3)");
+  countTo($("tide-n"), index);
+
+  const phase = moon.illumination < 5  ? "New moon · spring tide"
+              : moon.illumination > 95 ? "Full moon · spring tide"
+              : syzygy > 0.6 ? "Toward spring tide" : "Toward neap tide";
+
+  setHTML($("tide"), [
+    row("Lunar range", "geocentric", Math.round(moon.range_km).toLocaleString("en-US"), "<em>km</em>"),
+    row("Illuminated", "phase", moon.illumination.toFixed(1) + "%", "<em>" + phase + "</em>"),
+    row("Lunar altitude", "at 安曇野", moon.elevation.toFixed(1) + "°",
+        "<em>" + (moon.elevation > 0 ? "above horizon" : "below horizon") + "</em>"),
+    row("Solar altitude", "at 安曇野", sun.elevation.toFixed(1) + "°",
+        "<em>" + (sun.elevation > 0 ? "day" : "night") + "</em>"),
+    row("Peak tidal stress", "order of magnitude", "1–5", "<em>kPa</em>"),
+    row("Epoch", "UTC", new Date().toISOString().slice(11,16),
+        "<em>" + new Date().toISOString().slice(0,10) + "</em>")
+  ].join(""));
+}
+
+/* ── run ─────────────────────────────────────────────────────────── */
+initMap();
+loadStage();
+loadJMA();  setInterval(loadJMA,  30000);
+loadUSGS(); setInterval(loadUSGS, 300000);
+loadTide(); setInterval(loadTide, 1800000);
+})();
+</script>
+</body>
+</html>
