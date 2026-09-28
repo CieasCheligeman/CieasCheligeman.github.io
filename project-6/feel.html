@@ -1,0 +1,1652 @@
+<!doctype html>
+<html lang="en" data-page="feel">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>揺れ体験 · Feel a Magnitude</title>
+<meta name="description" content="An earthquake simulator for every magnitude: choose a magnitude and a distance, and feel the shaking a room in Japan would go through.">
+<script>
+/* Before first paint: theme, script flag, and — if the previous page handed
+   over a passage — hold this page under the veil until it can open. */
+(function(){
+  var d = document.documentElement;
+  d.classList.add("js");
+  try { var t = localStorage.getItem("azq-theme"); if (t) d.dataset.theme = t; } catch (e) {}
+  try {
+    var v = JSON.parse(sessionStorage.getItem("azq-veil") || "null");
+    sessionStorage.removeItem("azq-veil");
+    if (v && Date.now() - v.t < 8000 && !matchMedia("(prefers-reduced-motion: reduce)").matches){
+      d.classList.add("arriving");
+      /* never leave the page covered if something below fails */
+      setTimeout(function(){ d.classList.remove("arriving"); }, 5000);
+    }
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600;900&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap">
+<style>
+/* The shared design system — tokens, type, sections, chips, readouts,
+   prose, footer and motion — is copied from index.html so this page can
+   be served on its own, like the rest of the site, with no build step. */
+/* ═══ tokens ═══════════════════════════════════════════════════════════
+   Light is 青白磁 — the pale blue-white of Nagano porcelain, held well
+   clear of cream. Dark is 墨, ink at night. Every neutral is pulled a
+   few degrees toward the indigo accent so the greys read as chosen.
+   Text tones are set for contrast, not for delicacy: --ink-3 is the
+   faintest tone on the page and still clears 5:1 on its own ground.  */
+:root{
+  --ground:#E9EBE6;  --paper:#F3F5F1;  --raise:#FAFBF8;  --sink:#DDE0DA;
+  color-scheme:light;
+  --ink:#121518;     --ink-2:#3C444B;  --ink-3:#5E6870;
+  --rule:#C0C6BF;    --rule-2:#D5DAD3;
+  --ai:#2A4A5E;      --ai-2:#4E7793;   --ai-wash:rgba(42,74,94,.09);
+  --live:#A8102A;
+  --shadow:0 1px 2px rgba(18,21,24,.05), 0 8px 26px -18px rgba(18,21,24,.30);
+  --moon-cut:translate(8.5px,-2.5px); --ray-op:1; --icon-rot:0deg;
+  --map-filter:saturate(.5) brightness(1.08) contrast(.9);
+  --scrim:rgba(12,15,18,.66);
+  --aura-1:rgba(78,119,147,.16); --aura-2:rgba(201,163,16,.07); --grain:.05;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0A0C0F; --paper:#12161A; --raise:#1A1F25; --sink:#06080A;
+    --ink:#EDF0EB;    --ink-2:#A9B3B9; --ink-3:#7A848B;
+    --rule:#262D34;   --rule-2:#1B2126;
+    --ai:#93B8CE;     --ai-2:#628BA3;  --ai-wash:rgba(147,184,206,.10);
+    --live:#FF5C6E;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+    --moon-cut:translate(-6.5px,1.5px); --ray-op:0; --icon-rot:-38deg;
+    --map-filter:saturate(.68) brightness(.76) contrast(1.06);
+    --scrim:rgba(4,6,8,.7);
+    --aura-1:rgba(98,139,163,.15); --aura-2:rgba(168,16,42,.07); --grain:.07;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0A0C0F; --paper:#12161A; --raise:#1A1F25; --sink:#06080A;
+  --ink:#EDF0EB;    --ink-2:#A9B3B9; --ink-3:#7A848B;
+  --rule:#262D34;   --rule-2:#1B2126;
+  --ai:#93B8CE;     --ai-2:#628BA3;  --ai-wash:rgba(147,184,206,.10);
+  --live:#FF5C6E;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+  --moon-cut:translate(-6.5px,1.5px); --ray-op:0; --icon-rot:-38deg;
+  --map-filter:saturate(.68) brightness(.76) contrast(1.06);
+  --scrim:rgba(4,6,8,.7);
+  --aura-1:rgba(98,139,163,.15); --aura-2:rgba(168,16,42,.07); --grain:.07;
+  color-scheme:dark;
+}
+/* The JMA shindo scale — the real colour system of this subject.
+   Identical in both themes: the scale is the scale. */
+:root{
+  --s1:#556C7A; --s2:#1B7B9C; --s3:#158C68; --s4:#C9A310;
+  --s5m:#DF8117; --s5p:#D24A16; --s6m:#B30E2C; --s6p:#84092B; --s7:#651A73;
+}
+
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0; min-height:100%;
+  background:var(--ground); color:var(--ink);
+  font-family:"Zen Kaku Gothic New",-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;
+  font-weight:400; font-size:16px; line-height:1.7;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+img{max-width:100%}
+/* Atmosphere: two faint auras of the accent, fixed behind everything, and
+   a fine film grain over the whole page so flat grounds read as paper and
+   ink rather than as screen. Both are static — nothing to repaint. */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(1100px 620px at 8% -8%, var(--aura-1), transparent 62%),
+    radial-gradient(900px 560px at 104% 18%, var(--aura-2), transparent 64%),
+    radial-gradient(1000px 700px at 50% 118%, var(--aura-1), transparent 60%);
+}
+body::after{
+  content:""; position:fixed; inset:-50%; pointer-events:none; z-index:9000;
+  opacity:var(--grain); mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap{position:relative; z-index:1}
+::selection{background:color-mix(in srgb,var(--ai) 30%,transparent); color:var(--ink)}
+*{scrollbar-width:thin; scrollbar-color:var(--rule) transparent}
+[hidden]{display:none!important}
+a{color:var(--ai); text-decoration:none; border-bottom:1px solid var(--rule); transition:border-color .2s}
+a:hover{border-bottom-color:var(--ai)}
+:focus-visible{outline:2px solid var(--ai); outline-offset:3px; border-radius:1px}
+h1,h2,h3{text-wrap:balance}
+
+.wrap{max-width:1240px; margin:0 auto; padding-inline:clamp(20px,4vw,40px)}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.disp{font-family:"Zen Old Mincho","Hiragino Mincho ProN",serif}
+/* one utility for every micro-label on the page */
+.tag{
+  font-family:"JetBrains Mono",monospace; font-weight:400; font-size:10.5px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3);
+}
+
+/* ═══ masthead ═════════════════════════════════════════════════════ */
+.mast{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:28px; flex-wrap:wrap; padding-block:clamp(30px,5vw,52px) 26px;
+}
+.mast h1{
+  font-family:"Zen Old Mincho",serif; font-weight:600; margin:0;
+  font-size:clamp(30px,4.6vw,46px); line-height:1.08; letter-spacing:.02em;
+}
+.mast h1 .jp{letter-spacing:.1em; margin-right:.12em}
+.mast .roman{
+  display:block; margin-top:14px; font-family:"JetBrains Mono",monospace;
+  font-weight:400; font-size:11px; letter-spacing:.3em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+.mast-right{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.coord{
+  font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:12.5px; line-height:1.55; color:var(--ink-2); text-align:right;
+}
+.coord b{display:block; font-weight:500; font-size:15px; color:var(--ink); letter-spacing:.02em}
+.coord span{font-size:10.5px; letter-spacing:.16em; color:var(--ink-3); text-transform:uppercase}
+.themebtn{
+  position:relative; width:42px; height:42px; padding:0; flex:0 0 auto;
+  display:grid; place-items:center; cursor:pointer; border-radius:50%;
+  background:none; border:1px solid var(--rule); color:var(--ink-2);
+  transition:border-color .45s var(--ease), color .45s var(--ease),
+             background-color .45s var(--ease);
+}
+.themebtn::before{      /* a halo that breathes outward on hover */
+  content:""; position:absolute; inset:-1px; border-radius:50%;
+  background:var(--ai-wash); opacity:0; transform:scale(.7);
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+}
+.themebtn:hover{border-color:var(--ai); color:var(--ai)}
+.themebtn:hover::before{opacity:1; transform:scale(1.14)}
+.themebtn:active{transform:scale(.94)}
+.themebtn svg{
+  position:relative; width:22px; height:22px; overflow:visible;
+  transform:rotate(var(--icon-rot,0deg));
+  transition:transform 900ms var(--ease);
+}
+.themebtn .disc{fill:currentColor}
+/* the mask circle slides across the disc: full moon becomes crescent */
+.themebtn .cut{
+  transform:var(--moon-cut,translate(8.5px,-2.5px));
+  transition:transform 900ms var(--ease);
+}
+.themebtn .rays{
+  stroke:currentColor; stroke-width:1.5; stroke-linecap:round;
+  opacity:var(--ray-op,1); transform-box:view-box; transform-origin:13px 13px;
+  transform:scale(calc(.55 + var(--ray-op,1) * .45)) rotate(calc(var(--ray-op,1) * 0deg));
+  transition:opacity 700ms var(--ease), transform 900ms var(--ease);
+}
+
+/* ═══ sections ═════════════════════════════════════════════════════ */
+section{padding-block:clamp(38px,5vw,60px); border-top:1px solid var(--rule-2)}
+section:first-of-type{border-top:0}
+.sec-head{
+  display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
+  margin-bottom:30px; padding-bottom:14px; border-bottom:1px solid var(--rule-2);
+}
+.sec-head h2{
+  font-family:"Zen Old Mincho",serif; font-weight:600; margin:0;
+  font-size:clamp(22px,2.6vw,27px); letter-spacing:.04em; line-height:1.2;
+}
+.sec-head .en{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--ai-2);
+}
+.sec-head .meta{
+  margin-left:auto; font-family:"JetBrains Mono",monospace;
+  font-size:11px; letter-spacing:.1em; color:var(--ink-3);
+}
+.split{display:grid; grid-template-columns:1.48fr 1fr; gap:clamp(32px,4vw,56px); align-items:start}
+@media (max-width:920px){.split{grid-template-columns:1fr; gap:38px}}
+
+/* ═══ shindo chip ══════════════════════════════════════════════════ */
+.shindo{
+  display:grid; place-items:center; border-radius:2px; color:#FCFDFB;
+  font-family:"Zen Old Mincho",serif; font-weight:600; line-height:1;
+  width:52px; height:52px; font-size:23px; flex:0 0 auto;
+  position:relative; overflow:hidden;
+}
+.shindo::before{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(to bottom,rgba(255,255,255,.17),transparent 62%);
+}
+.shindo sup{font-size:.52em; vertical-align:top; margin-left:1px; font-weight:400;
+  position:relative; top:.15em}
+.shindo.lg{width:88px; height:88px; font-size:42px; border-radius:3px}
+.shindo.none{
+  background:transparent; border:1px dashed var(--rule); color:var(--ink-3);
+  font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.1em;
+}
+.shindo.none::before{display:none}
+
+/* ═══ prose ════════════════════════════════════════════════════════ */
+.prose{max-width:66ch; font-size:15.5px; line-height:1.85; color:var(--ink-2)}
+.prose p{margin:0 0 17px}
+.prose p:last-child{margin-bottom:0}
+.prose strong{font-weight:500; color:var(--ink)}
+.caveat{
+  border-left:2px solid var(--ai); background:var(--ai-wash);
+  padding:15px 20px; border-radius:0 3px 3px 0; margin-top:26px;
+  font-size:14.5px; line-height:1.8; color:var(--ink-2); max-width:66ch;
+}
+.caveat b{font-weight:600; color:var(--ink)}
+.caveat:first-child{margin-top:0}
+
+/* ═══ footer ═══════════════════════════════════════════════════════ */
+footer{
+  border-top:1px solid var(--rule); padding-block:34px 64px;
+  font-size:13.5px; color:var(--ink-2); line-height:1.85; max-width:74ch;
+}
+footer .dim{color:var(--ink-3)}
+footer .srcs{display:flex; gap:10px 24px; flex-wrap:wrap; margin-top:16px}
+footer .srcs a{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-2); border-bottom-color:var(--rule-2);
+}
+footer .srcs a:hover{color:var(--ai)}
+
+.downbar{
+  background:var(--paper); border-block:1px solid var(--live);
+  border-left:3px solid var(--live);
+  padding:18px clamp(20px,4vw,40px); font-size:14.5px; line-height:1.75;
+  color:var(--ink-2); max-width:none;
+}
+.downbar b{color:var(--ink); font-weight:600}
+.downbar code{
+  display:block; margin:9px 0; padding:9px 13px; border-radius:2px;
+  background:var(--sink); color:var(--ink); font-family:"JetBrains Mono",monospace;
+  font-size:12.5px; letter-spacing:.02em; overflow-x:auto;
+}
+.downbar .detail{
+  display:block; margin-top:8px; font-family:"JetBrains Mono",monospace;
+  font-size:10.5px; letter-spacing:.1em; color:var(--ink-3);
+}
+.err{color:var(--live); font-family:"JetBrains Mono",monospace; font-size:12px}
+.dim{color:var(--ink-3)}
+/* ═══ light, rings and finish ══════════════════════════════════════ */
+/* a soft pool of the accent follows the pointer across a card */
+.glow{position:relative; isolation:isolate}
+.glow::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2;
+  background:radial-gradient(380px circle at var(--mx,50%) var(--my,50%),
+             color-mix(in srgb,var(--ai) 13%,transparent), transparent 62%);
+  opacity:0; transition:opacity .5s var(--ease);
+}
+.glow:hover::after{opacity:1}
+/* hairline of light along the top edge of raised surfaces */
+.hero,.spark,.read,.found{background-image:linear-gradient(180deg,color-mix(in srgb,var(--ink) 4%,transparent),transparent 40%)}
+
+/* The calm chip sends out slow rings, like waves crossing still water:
+   hairlines that leave the chip square and round into circles as they
+   spread. A felt event does the same, faster, in the live colour. */
+.hero .shindo.lg{overflow:visible}
+.hero .shindo.lg::after{
+  content:""; position:absolute; inset:-1px; pointer-events:none;
+  border:1px solid var(--ring-c,var(--ai)); border-radius:3px; opacity:0;
+  animation:wave 5200ms var(--ease-soft) 1600ms infinite;
+}
+.hero.calm .shindo.lg::before{
+  display:block; content:""; position:absolute; inset:-1px; background:none;
+  border:1px solid var(--ai); border-radius:3px; opacity:0;
+  animation:wave 5200ms var(--ease-soft) 4200ms infinite;
+}
+.hero:not(.calm) .shindo.lg:not(.none){--ring-c:var(--live)}
+.hero:not(.calm) .shindo.lg:not(.none)::after{animation-duration:2400ms; animation-delay:1000ms}
+.hero .shindo.lg.none::after{display:none}
+@keyframes wave{
+  0%{opacity:.75; transform:scale(1); border-radius:3px}
+  100%{opacity:0; transform:scale(2.3); border-radius:50%}
+}
+
+/* rows answer the pointer: the chip lifts, the name leans in */
+.quakes li .shindo{transition:transform .45s var(--ease), box-shadow .45s var(--ease)}
+.quakes li:hover .shindo{transform:translateY(-1px) scale(1.06);
+  box-shadow:0 8px 20px -8px rgba(0,0,0,.55)}
+.q-where{transition:transform .45s var(--ease)}
+.quakes li:hover .q-where{transform:translateX(4px)}
+
+/* maps: a vignette over the imagery (under markers and controls), and
+   epicentres that bloom in when they are first drawn */
+.mapbox::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:250;
+  box-shadow:inset 0 0 90px rgba(3,5,8,.55), inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.leaflet-interactive.ep{transform-box:fill-box; transform-origin:center}
+.leaflet-interactive.ep-bloom{animation:ep-bloom 1100ms var(--ease) var(--d,0ms) both}
+.leaflet-interactive.ep-fresh{animation:ep-pulse 2800ms var(--ease-soft) infinite}
+.leaflet-interactive.ep-bloom.ep-fresh{animation:ep-bloom 1100ms var(--ease) var(--d,0ms) both,
+                                        ep-pulse 2800ms var(--ease-soft) calc(var(--d,0ms) + 1100ms) infinite}
+@keyframes ep-bloom{from{opacity:0; transform:scale(.1)}70%{opacity:1; transform:scale(1.25)}to{opacity:1; transform:none}}
+@keyframes ep-pulse{0%,100%{stroke-width:1; stroke-opacity:.9}50%{stroke-width:6; stroke-opacity:.18}}
+
+/* search: the button carries a slow sheen, the field a halo */
+.finder .go{position:relative; overflow:hidden}
+.finder .go::after{
+  content:""; position:absolute; inset:0; transform:translateX(-120%);
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+}
+.finder .go:hover::after{animation:sheen 1100ms var(--ease)}
+@keyframes sheen{to{transform:translateX(120%)}}
+.finder input:focus{box-shadow:0 0 0 4px var(--ai-wash), 0 18px 40px -26px color-mix(in srgb,var(--ai) 70%,transparent)}
+
+/* the closing wordmark: the city's name, set large and faint, fading
+   into the ground the way the basin fades into the Alps */
+.coda{
+  font-family:"Zen Old Mincho",serif; font-weight:900; line-height:.9;
+  font-size:clamp(88px,19vw,260px); letter-spacing:.22em; text-align:center;
+  margin:clamp(20px,4vw,50px) 0 0; padding-bottom:clamp(30px,5vw,70px);
+  user-select:none; pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ai-2) 38%,transparent),transparent 88%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* ═══ motion ═══════════════════════════════════════════════════════
+   One easing curve governs everything — a long, decelerating settle, the
+   opposite of a bounce. Every animation ends at the element's real resting
+   state and uses `both` fill, so if motion is reduced or an animation never
+   runs, the page still reads exactly as designed. Nothing here waits on a
+   scroll: the whole sequence plays on load. */
+:root{
+  --ease:cubic-bezier(.22,.61,.24,1);
+  --ease-soft:cubic-bezier(.37,0,.24,1);
+}
+@keyframes rise{from{opacity:0; transform:translate3d(0,14px,0)}to{opacity:1; transform:none}}
+@keyframes settle{from{opacity:0; transform:translate3d(0,8px,0)}to{opacity:1; transform:none}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes bloom{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.2)}
+  70%{opacity:1; transform:translate(-50%,-50%) scale(1.14)}
+  100%{opacity:var(--ep-o,.7); transform:translate(-50%,-50%) scale(1)}
+}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ripple{
+  0%{box-shadow:0 0 0 0 var(--ring,transparent)}
+  70%{box-shadow:0 0 0 13px rgba(0,0,0,0)}
+  100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}
+}
+@keyframes arc{from{stroke-dashoffset:var(--arc-len,0)}to{stroke-dashoffset:0}}
+
+/* The load sequence: the masthead writes itself in (see the title rules),
+   the stage unveils, and everything below settles into place as it
+   scrolls into view — each block a beat after the one before it, so a
+   section assembles rather than appears. Hidden states only apply once
+   script has run (html.js), so without it the page reads as designed. */
+.mast{animation:none}
+.stage{animation:unveil 1700ms var(--ease) 260ms both}
+@keyframes unveil{
+  from{clip-path:inset(7% 9% 7% 9% round 10px); transform:scale(1.015); opacity:.2}
+  to{clip-path:inset(0 0 0 0 round 4px); transform:none; opacity:1}
+}
+.js [data-rv]{opacity:0}
+.js [data-rv].in{animation:reveal 1150ms var(--ease) var(--d,0ms) both}
+@keyframes reveal{
+  from{opacity:0; transform:translate3d(0,28px,0)}
+  to{opacity:1; transform:none}
+}
+.sec-head{position:relative}
+.sec-head::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background:linear-gradient(90deg,var(--ai),color-mix(in srgb,var(--ai) 0%,transparent));
+  opacity:.55; transform-origin:left;
+}
+.js .sec-head[data-rv]::after{transform:scaleX(0)}
+.js .sec-head[data-rv].in::after{animation:draw 1600ms var(--ease) calc(var(--d,0ms) + 250ms) both}
+.sec-head .idx{
+  font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.18em;
+  color:var(--ai-2); align-self:flex-start; margin-top:.2em; margin-right:-4px;
+}
+.sec-head .idx::after{content:""; display:inline-block; width:22px; height:1px;
+  background:var(--ai-2); opacity:.6; vertical-align:middle; margin-left:10px}
+
+/* data that arrives later settles rather than appears */
+.fade-in{animation:rise 800ms var(--ease) both}
+.quakes li{animation:settle 620ms var(--ease) both}
+.quakes li:nth-child(1){animation-delay:40ms}  .quakes li:nth-child(2){animation-delay:80ms}
+.quakes li:nth-child(3){animation-delay:120ms} .quakes li:nth-child(4){animation-delay:160ms}
+.quakes li:nth-child(5){animation-delay:200ms} .quakes li:nth-child(6){animation-delay:240ms}
+.quakes li:nth-child(7){animation-delay:280ms} .quakes li:nth-child(8){animation-delay:320ms}
+.quakes li:nth-child(n+9){animation-delay:360ms}
+.metrics>div{animation:settle 700ms var(--ease) both}
+.metrics>div:nth-child(2){animation-delay:90ms}
+.metrics>div:nth-child(3){animation-delay:180ms}
+.read>div{animation:settle 600ms var(--ease) both}
+.read>div:nth-child(2){animation-delay:60ms}  .read>div:nth-child(3){animation-delay:120ms}
+.read>div:nth-child(4){animation-delay:180ms} .read>div:nth-child(5){animation-delay:240ms}
+.read>div:nth-child(6){animation-delay:300ms}
+
+/* epicentres bloom outward from the basemap; the last week keeps pulsing */
+.spark rect{transform-box:fill-box; transform-origin:center bottom;
+  animation:grow 700ms var(--ease) both}
+#dial-arc{animation:arc 1600ms var(--ease) 200ms both}
+
+/* the chip is the one thing allowed to arrive with weight */
+.shindo.lg{animation:rise 900ms var(--ease) 120ms both}
+.hero-figs .v{animation:settle 700ms var(--ease) both}
+
+/* colour changes glide; layout never does */
+body,.hero,.read>div,.metrics>div,.spark,.mapbox,.caveat{
+  transition:background-color .5s var(--ease-soft), border-color .5s var(--ease-soft),
+             color .5s var(--ease-soft);
+}
+a,.themebtn,.quakes li,.cams button::after{transition-timing-function:var(--ease)}
+
+/* Theme change, where the browser supports it: the incoming theme is
+   clipped to a circle that opens from the button, like ink spreading
+   through paper. The outgoing theme simply sits underneath. Browsers
+   without the View Transitions API fall back to the colour transitions
+   declared above, which is why those stay. */
+::view-transition-old(root),
+::view-transition-new(root){animation:none; mix-blend-mode:normal}
+::view-transition-old(root){z-index:1}
+::view-transition-new(root){z-index:9999}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important; animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+  .plate figure{transition:none}
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+}
+
+/* ═══ simulator page ═══════════════════════════════════════════════ */
+.mast h1 i{
+  font-style:normal; display:inline-block;
+  animation:ink 1500ms var(--ease) calc(120ms + var(--i) * 110ms) both;
+}
+@keyframes ink{
+  from{opacity:0; filter:blur(12px); transform:translate3d(0,.18em,0) scale(1.04)}
+  60%{filter:blur(.6px)}
+  to{opacity:1; filter:none; transform:none}
+}
+.mast .roman{animation:settle 1100ms var(--ease) 820ms both}
+.mast-right{animation:settle 1100ms var(--ease) 600ms both}
+.back{
+  font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--ink-2); border:1px solid var(--rule);
+  border-radius:999px; padding:9px 16px; white-space:nowrap;
+  transition:border-color .3s var(--ease), color .3s var(--ease);
+}
+.back:hover{border-color:var(--ai); color:var(--ai)}
+.lede{max-width:70ch; font-size:17px; line-height:1.85; color:var(--ink-2); margin:0 0 8px}
+.lede strong{color:var(--ink); font-weight:500}
+
+.sim{display:grid; grid-template-columns:1.55fr 1fr; gap:clamp(24px,3.4vw,44px); align-items:start}
+@media (max-width:980px){.sim{grid-template-columns:1fr}}
+
+/* the room */
+.room{
+  position:relative; border-radius:4px; overflow:hidden; background:var(--sink);
+  border:1px solid var(--rule); box-shadow:0 2px 6px rgba(10,13,16,.10), 0 40px 90px -50px rgba(10,13,16,.7);
+  aspect-ratio:16/9;
+}
+.room canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+.room .hud{
+  position:absolute; left:16px; right:16px; top:14px; display:flex; justify-content:space-between;
+  gap:12px; pointer-events:none; z-index:2;
+}
+.room .hud span{
+  font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-2); background:color-mix(in srgb,var(--paper) 78%,transparent);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  padding:6px 10px; border-radius:2px; border:1px solid var(--rule-2);
+}
+#hud-phase.live{color:var(--live); border-color:color-mix(in srgb,var(--live) 40%,transparent)}
+.room-play{
+  position:absolute; left:50%; top:50%; width:74px; height:74px; margin:-37px 0 0 -37px; z-index:3;
+  border-radius:50%; border:1px solid rgba(255,255,255,.35); cursor:pointer; display:grid; place-items:center;
+  background:color-mix(in srgb,var(--ai) 70%,transparent); color:#fff;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  box-shadow:0 12px 40px -12px rgba(0,0,0,.6); --ring:color-mix(in srgb,var(--ai) 50%,transparent);
+  animation:ripple 2600ms var(--ease-soft) infinite;
+  transition:opacity .4s var(--ease), transform .4s var(--ease);
+}
+.room-play svg{width:22px; height:22px; fill:currentColor; margin-left:3px}
+.room-play:hover{transform:scale(1.06)}
+.room.playing .room-play{opacity:0; transform:scale(.8); pointer-events:none}
+.trace{
+  margin-top:12px; background:var(--paper); border:1px solid var(--rule-2); border-radius:3px;
+  padding:12px 14px 10px;
+}
+.trace canvas{display:block; width:100%; height:78px}
+.trace-foot{display:flex; justify-content:space-between; gap:12px; margin-top:6px; flex-wrap:wrap}
+
+/* controls */
+.panel{display:flex; flex-direction:column; gap:18px}
+.est{
+  display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:center;
+  background:var(--paper); border:1px solid var(--rule-2); border-radius:3px;
+  padding:20px; box-shadow:var(--shadow);
+}
+.est .shindo.lg{transition:background-color .5s var(--ease)}
+.est .k{display:block}
+.est .v{font-family:"Zen Old Mincho",serif; font-weight:600; font-size:clamp(21px,2.4vw,26px);
+  line-height:1.25; margin:4px 0 0; letter-spacing:.02em}
+.est .s{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.08em;
+  color:var(--ink-3); margin-top:6px; line-height:1.6}
+.feel-text{font-size:14.5px; line-height:1.8; color:var(--ink-2); margin:0; min-height:5.4em}
+.feel-text b{color:var(--ink); font-weight:500}
+
+.ctl{display:grid; gap:8px}
+.ctl-top{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.ctl-top output{font-family:"JetBrains Mono",monospace; font-size:15px; font-weight:500; color:var(--ink)}
+.mags{display:grid; grid-template-columns:repeat(9,1fr); gap:5px}
+.mags button{
+  font-family:"Zen Old Mincho",serif; font-size:17px; font-weight:600; color:var(--ink-2);
+  background:var(--paper); border:1px solid var(--rule-2); border-radius:3px;
+  padding:9px 0; cursor:pointer; position:relative; overflow:hidden;
+  transition:color .3s var(--ease), border-color .3s var(--ease), transform .3s var(--ease);
+}
+.mags button::before{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--c,var(--ai));
+  transform:scaleX(0); transition:transform .45s var(--ease);
+}
+.mags button:hover{color:var(--ink); border-color:var(--rule); transform:translateY(-1px)}
+.mags button[aria-pressed="true"]{color:var(--ink); border-color:var(--c,var(--ai))}
+.mags button[aria-pressed="true"]::before{transform:none}
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:26px; background:none; margin:0; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:2px; background:linear-gradient(90deg,var(--ai) var(--p,50%),var(--rule) var(--p,50%))}
+input[type=range]::-moz-range-track{height:2px; background:var(--rule)}
+input[type=range]::-moz-range-progress{height:2px; background:var(--ai)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:18px; height:18px; margin-top:-8px; border-radius:50%;
+  background:var(--paper); border:2px solid var(--ai); box-shadow:0 0 0 5px var(--ai-wash);
+  transition:transform .2s var(--ease);
+}
+input[type=range]::-moz-range-thumb{width:14px; height:14px; border-radius:50%; background:var(--paper); border:2px solid var(--ai)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+.seg{display:grid; grid-template-columns:repeat(3,1fr); gap:5px}
+.seg button{
+  font:inherit; font-size:13px; color:var(--ink-2); background:var(--paper); cursor:pointer;
+  border:1px solid var(--rule-2); border-radius:3px; padding:8px 6px; line-height:1.35;
+  transition:border-color .3s var(--ease), color .3s var(--ease);
+}
+.seg button small{display:block; font-family:"JetBrains Mono",monospace; font-size:10px;
+  letter-spacing:.08em; color:var(--ink-3)}
+.seg button[aria-pressed="true"]{border-color:var(--ai); color:var(--ink); background:var(--ai-wash)}
+.play{
+  display:flex; align-items:center; justify-content:center; gap:12px; width:100%;
+  background:var(--ai); color:var(--paper); border:0; border-radius:3px; min-height:56px; cursor:pointer;
+  font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.24em; text-transform:uppercase;
+  position:relative; overflow:hidden; transition:background-color .3s var(--ease);
+}
+.play:hover{background:var(--ai-2)}
+.play::after{
+  content:""; position:absolute; inset:0; transform:translateX(-120%);
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.3) 50%,transparent 70%);
+}
+.play:hover::after{animation:sheen 1100ms var(--ease)}
+.play.on{background:var(--live)}
+.play svg{width:14px; height:14px; fill:currentColor}
+.opts{display:flex; flex-wrap:wrap; gap:8px 18px}
+.opts label{display:inline-flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-2); cursor:pointer}
+.opts input{accent-color:var(--ai); width:15px; height:15px}
+.note{font-size:12.5px; color:var(--ink-3); line-height:1.7; margin:0}
+
+/* the magnitude ladder */
+.ladder{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px}
+.rung{
+  position:relative; background:var(--paper); border:1px solid var(--rule-2); border-radius:3px;
+  padding:18px 18px 16px; display:flex; flex-direction:column; gap:10px; cursor:pointer;
+  transition:border-color .35s var(--ease), transform .45s var(--ease), box-shadow .45s var(--ease);
+}
+.rung:hover{border-color:var(--rule); transform:translateY(-3px); box-shadow:var(--shadow)}
+.rung:focus-visible{outline:2px solid var(--ai); outline-offset:3px}
+.rung-top{display:flex; justify-content:space-between; align-items:baseline}
+.rung .mag{font-family:"Zen Old Mincho",serif; font-weight:900; font-size:38px; line-height:1; letter-spacing:.01em}
+.rung .mag em{font-style:normal; font-size:.5em; color:var(--ink-3); margin-right:2px; font-weight:600}
+.rung .name{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.energy{height:4px; background:var(--rule-2); border-radius:2px; overflow:hidden}
+.energy i{display:block; height:100%; width:var(--w); background:linear-gradient(90deg,var(--ai-2),var(--ai));
+  transform-origin:left; animation:draw 1400ms var(--ease) both}
+.rung dl{margin:0; display:grid; grid-template-columns:1fr auto; gap:5px 12px; font-size:12.5px}
+.rung dt{color:var(--ink-3); font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; align-self:center}
+.rung dd{margin:0; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--ink); text-align:right;
+  display:flex; align-items:center; gap:6px; justify-content:flex-end}
+.chip{display:inline-grid; place-items:center; min-width:24px; height:20px; padding:0 4px; border-radius:2px;
+  color:#FCFDFB; font-family:"Zen Old Mincho",serif; font-weight:600; font-size:13px}
+.chip{line-height:1}
+.chip sup{font-size:.62em; line-height:1; vertical-align:top; position:relative; top:-.05em; margin-left:1px}
+.chip.zero{background:transparent; border:1px dashed var(--rule); color:var(--ink-3)}
+.rung .eg{font-size:12.5px; color:var(--ink-3); line-height:1.6; border-top:1px solid var(--rule-2); padding-top:10px; margin-top:auto}
+
+/* the shindo scale */
+.scale{list-style:none; margin:0; padding:0; border:1px solid var(--rule-2); border-radius:3px; overflow:hidden}
+.scale li{
+  display:grid; grid-template-columns:52px 1fr auto; gap:18px; align-items:center;
+  padding:14px 18px 14px 14px; background:var(--paper); border-bottom:1px solid var(--rule-2);
+  transition:background-color .3s var(--ease);
+}
+.scale li:last-child{border-bottom:0}
+.scale li.cur{background:var(--ai-wash)}
+.scale li p{margin:0; font-size:14.5px; line-height:1.7; color:var(--ink-2)}
+.scale li p b{color:var(--ink); font-weight:500}
+.scale .mmi{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.1em; color:var(--ink-3); white-space:nowrap}
+@media (max-width:560px){.scale li{grid-template-columns:44px 1fr} .scale .mmi{grid-column:2}}
+
+.steps{counter-reset:s; list-style:none; margin:0; padding:0; display:grid; gap:12px}
+.steps li{counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:14px; font-size:15px; line-height:1.75; color:var(--ink-2)}
+.steps li::before{content:counter(s,decimal-leading-zero); font-family:"JetBrains Mono",monospace; font-size:11px;
+  letter-spacing:.14em; color:var(--ai-2); padding-top:5px}
+.steps b{color:var(--ink); font-weight:500}
+
+/* the whole page can ride the shaking, if the viewer asks for it */
+.page{will-change:transform}
+
+/* ═══ passage between pages ════════════════════════════════════════
+   Leaving: rings spread from the click, an ink curtain floods out from the
+   same point while the page sinks and blurs, and the destination's name
+   inks in over a seismogram. Arriving: the new page opens on that same
+   curtain, the glyphs lift away, and the curtain parts as a feathered
+   iris from the centre while the page comes into focus beneath it. The
+   curtain is ink in both themes; against the light theme that is the
+   point. */
+.veil,.veil-waves{position:fixed; inset:0; pointer-events:none; display:none}
+.veil{
+  z-index:8000; place-items:center; color:#EDF0EB;
+  background:
+    radial-gradient(60vmax 46vmax at 50% 44%, rgba(78,119,147,.26), transparent 70%),
+    radial-gradient(48vmax 40vmax at 86% 96%, rgba(168,16,42,.12), transparent 70%),
+    radial-gradient(40vmax 34vmax at 8% 6%, rgba(147,184,206,.08), transparent 70%),
+    #05070A;
+}
+html.leaving .veil,html.arriving .veil,html.opening .veil{display:grid}
+html.leaving .veil{pointer-events:auto}
+html.leaving,html.arriving{overflow:hidden}
+.veil-in{display:flex; flex-direction:column; align-items:center; gap:clamp(16px,2.6vw,30px); width:min(900px,84vw)}
+.veil-jp{
+  font-family:"Zen Old Mincho","Hiragino Mincho ProN",serif; font-weight:600; line-height:1;
+  font-size:clamp(64px,13vw,168px); letter-spacing:.16em; margin-right:-.16em; white-space:nowrap;
+  text-shadow:0 0 60px rgba(147,184,206,.25);
+}
+.veil-jp span{display:inline-block}
+.veil-line{display:block; width:100%; height:clamp(42px,6vw,74px); overflow:visible}
+.veil-line path{fill:none; stroke:rgba(237,240,235,.62); stroke-width:1.2; vector-effect:non-scaling-stroke; stroke-linejoin:round}
+.veil-en{
+  font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.36em; margin-right:-.36em;
+  text-transform:uppercase; color:#8D979E;
+}
+.veil-ring{
+  position:absolute; left:50%; top:50%; width:0; height:0; border-radius:50%; opacity:0;
+  transform:translate(-50%,-50%); border:1px solid rgba(147,184,206,.75);
+  box-shadow:0 0 50px 6px rgba(147,184,206,.28), inset 0 0 40px rgba(147,184,206,.18);
+}
+.veil-waves{z-index:8001}
+.veil-waves i{
+  position:absolute; left:var(--vx,50%); top:var(--vy,50%); width:40px; height:40px; margin:-20px 0 0 -20px;
+  border-radius:50%; border:1px solid var(--ai); opacity:0;
+}
+html.leaving .veil-waves{display:block}
+html.leaving .veil-waves i{animation:veil-wave 1300ms cubic-bezier(.2,.6,.2,1) both}
+html.leaving .veil-waves i:nth-child(2){animation-delay:150ms}
+html.leaving .veil-waves i:nth-child(3){animation-delay:300ms}
+@keyframes veil-wave{0%{opacity:.95; transform:scale(.15)}100%{opacity:0; transform:scale(24)}}
+
+/* leaving: the name inks in, the pen draws, the caption settles */
+html.leaving .veil-jp span{animation:veil-ink 820ms cubic-bezier(.22,.61,.24,1) calc(300ms + var(--i) * 95ms) both}
+@keyframes veil-ink{
+  from{opacity:0; filter:blur(16px); transform:translate3d(0,.14em,0) scale(1.08)}
+  to{opacity:1; filter:none; transform:none}
+}
+html.leaving .veil-line{clip-path:inset(-60% 100% -60% 0); animation:veil-unroll 950ms cubic-bezier(.5,.05,.2,1) 380ms forwards}
+@keyframes veil-unroll{to{clip-path:inset(-60% 0 -60% 0)}}
+html.leaving .veil-en{animation:veil-settle 800ms cubic-bezier(.22,.61,.24,1) 700ms both}
+@keyframes veil-settle{from{opacity:0; transform:translate3d(0,8px,0); letter-spacing:.6em}to{opacity:1; transform:none}}
+
+/* the page beneath recedes as the curtain comes */
+html.leaving .wrap{
+  transform:scale(.962); filter:blur(6px) saturate(.6); opacity:.3;
+  transition:transform 1200ms cubic-bezier(.7,0,.2,1), filter 1200ms cubic-bezier(.7,0,.2,1), opacity 1200ms cubic-bezier(.7,0,.2,1);
+}
+
+/* arriving: the page waits, slightly large and out of focus, its own
+   animations held, until the curtain parts */
+html.arriving .wrap{transform:scale(1.04); filter:blur(10px); opacity:0}
+html.arriving .wrap,html.arriving .wrap *,html.arriving .wrap *::before,html.arriving .wrap *::after{animation-play-state:paused!important}
+html.opening .wrap{transition:transform 1600ms cubic-bezier(.22,.61,.24,1), filter 1400ms cubic-bezier(.22,.61,.24,1), opacity 900ms cubic-bezier(.22,.61,.24,1)}
+html.opening .veil{
+  -webkit-mask-image:radial-gradient(circle at 50% 50%, transparent var(--r,0px), #000 calc(var(--r,0px) + 120px));
+          mask-image:radial-gradient(circle at 50% 50%, transparent var(--r,0px), #000 calc(var(--r,0px) + 120px));
+}
+html.opening .veil-jp span{animation:veil-lift 760ms cubic-bezier(.5,0,.2,1) calc(var(--i) * 70ms) both}
+@keyframes veil-lift{to{opacity:0; filter:blur(12px); transform:translate3d(0,-.22em,0) scale(.96)}}
+html.opening .veil-line{animation:veil-erase 700ms cubic-bezier(.6,0,.2,1) both}
+@keyframes veil-erase{from{clip-path:inset(-60% 0 -60% 0)}to{clip-path:inset(-60% 0 -60% 100%)}}
+html.opening .veil-en{animation:veil-fade 500ms ease both}
+@keyframes veil-fade{to{opacity:0}}
+</style>
+</head>
+<body>
+<div class="veil" id="veil" aria-hidden="true">
+  <div class="veil-in">
+    <div class="veil-jp" id="veil-jp" lang="ja"></div>
+    <svg class="veil-line" viewBox="0 0 1000 80" preserveAspectRatio="none"><path id="veil-path" d=""/></svg>
+    <div class="veil-en" id="veil-en"></div>
+  </div>
+  <i class="veil-ring" id="veil-ring"></i>
+</div>
+<div class="veil-waves" id="veil-waves" aria-hidden="true"><i></i><i></i><i></i></div>
+<script>
+/* The passage. Links marked data-veil="monitor|feel" leave through it;
+   a page that finds the hand-over in sessionStorage arrives through it.
+   Modifier-clicks, new tabs and reduced motion navigate as normal. */
+(function(){
+  var d = document.documentElement;
+  var PAGES = {
+    monitor:{jp:"安曇野", en:"Seismic Watch · live monitor", seed:5, big:.45},
+    feel:{jp:"揺れ体験", en:"Feel a Magnitude · simulator", seed:11, big:1}
+  };
+  var $ = function(id){ return document.getElementById(id); };
+  /* a deterministic seismogram: microseism, a few small events, one large */
+  function trace(seed, big){
+    var r = seed, rnd = function(){ r = (r * 16807) % 2147483647; return r / 2147483647; };
+    var N = 420, a = [], i, k;
+    for (i = 0; i < N; i++) a.push(.9 * Math.sin(i * .9 + seed) + .6 * Math.sin(i * 2.3) + .4 * Math.sin(i * 4.7 + 1));
+    var ev = [[.16,.25],[.3,.2],[.47,.3],[.6,big],[.78,.22],[.9,.18]];
+    ev.forEach(function(e){
+      var x0 = Math.floor(e[0] * N), A = 34 * e[1], tau = 4 + 26 * e[1] * e[1];
+      for (k = 0; k < tau * 5 && x0 + k < N; k++) a[x0 + k] += A * Math.exp(-k / tau) * Math.sin(k * 2.2 + rnd());
+    });
+    var p = "";
+    for (i = 0; i < N; i++) p += (i ? "L" : "M") + (i / (N - 1) * 1000).toFixed(1) + " " + (40 - 38 * Math.tanh(a[i] / 38)).toFixed(1);
+    return p;
+  }
+  function build(kind){
+    var pg = PAGES[kind] || PAGES.monitor;
+    $("veil-jp").innerHTML = pg.jp.split("").map(function(c, i){ return '<span style="--i:' + i + '">' + c + "</span>"; }).join("");
+    $("veil-en").textContent = pg.en;
+    $("veil-path").setAttribute("d", trace(pg.seed, pg.big));
+  }
+  if (d.classList.contains("arriving")) build(d.dataset.page);
+
+  var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, going = false;
+  function leave(kind, href, x, y){
+    if (going) return;
+    going = true;
+    build(kind);
+    var w = $("veil-waves");
+    w.style.setProperty("--vx", x + "px"); w.style.setProperty("--vy", y + "px");
+    var l = document.createElement("link"); l.rel = "prefetch"; l.href = href; document.head.appendChild(l);
+    try { sessionStorage.setItem("azq-veil", JSON.stringify({t:Date.now(), kind:kind})); } catch (e) {}
+    d.classList.add("leaving");
+    var reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 40;
+    var veil = $("veil");
+    if (veil.animate) veil.animate(
+      {clipPath:["circle(0px at " + x + "px " + y + "px)", "circle(" + reach + "px at " + x + "px " + y + "px)"]},
+      {duration:1050, delay:140, easing:"cubic-bezier(.7,0,.2,1)", fill:"both"});
+    setTimeout(function(){ location.href = href; }, 1480);
+  }
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest("a[data-veil]");
+    if (!a || reduced || e.defaultPrevented || e.button !== 0 ||
+        e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
+    e.preventDefault();
+    var x = e.clientX, y = e.clientY;
+    if (!e.detail){ var b = a.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top + b.height / 2; }
+    leave(a.getAttribute("data-veil"), a.href, x, y);
+  }, true);
+
+  function open(){
+    if (!d.classList.contains("arriving")) return;
+    var hold = new Promise(function(res){
+      setTimeout(res, 750);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ setTimeout(res, 260); });
+    });
+    hold.then(function(){
+      var veil = $("veil"), ring = $("veil-ring");
+      d.classList.add("opening"); d.classList.remove("arriving");
+      var reach = Math.hypot(innerWidth, innerHeight) / 2 + 160, t0 = 0, D = 1500, delay = 220;
+      function f(now){
+        if (!t0) t0 = now;
+        var k = Math.min(1, Math.max(0, (now - t0 - delay) / D));
+        var e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        var r = e * reach;
+        veil.style.setProperty("--r", r.toFixed(1) + "px");
+        ring.style.width = ring.style.height = (2 * r + 120).toFixed(1) + "px";
+        ring.style.opacity = k > 0 ? (Math.sin(Math.PI * Math.min(1, k * 1.15)) * .9).toFixed(3) : "0";
+        if (k < 1) requestAnimationFrame(f); else done();
+      }
+      function done(){
+        if (!d.classList.contains("opening")) return;
+        d.classList.remove("opening"); veil.style.removeProperty("--r"); ring.style.opacity = "0";
+      }
+      requestAnimationFrame(f);
+      /* if frames stall (a background tab, a busy device), finish anyway */
+      setTimeout(done, delay + D + 900);
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", open); else open();
+
+  /* back/forward cache: a page restored mid-departure comes back uncovered */
+  addEventListener("pageshow", function(e){
+    if (!e.persisted) return;
+    going = false;
+    d.classList.remove("leaving", "arriving", "opening");
+    var veil = $("veil");
+    if (veil.getAnimations) veil.getAnimations().forEach(function(an){ an.cancel(); });
+  });
+})();
+</script>
+<div class="page" id="page">
+<div class="wrap">
+  <header class="mast">
+    <h1 aria-label="揺れ体験 Feel a Magnitude"><span class="jp" lang="ja" aria-hidden="true"><i style="--i:0">揺</i><i style="--i:1">れ</i><i style="--i:2">体</i><i style="--i:3">験</i></span><span aria-hidden="true"><i style="--i:4">Feel</i> <i style="--i:5">a</i> <i style="--i:6">Magnitude</i></span>
+      <span class="roman">Earthquake simulator · <span lang="ja">安曇野</span> Seismic Watch</span></h1>
+    <div class="mast-right">
+      <a class="back" href="index.html" data-veil="monitor">← Seismic Watch</a>
+      <button class="themebtn" id="theme" type="button" aria-pressed="false"
+        aria-label="Switch between light and dark" title="Light / dark">
+        <svg viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+          <defs><mask id="moon-mask"><rect width="26" height="26" fill="#fff"></rect>
+            <circle class="cut" cx="13" cy="13" r="8.6" fill="#000"></circle></mask></defs>
+          <g class="rays">
+            <line x1="13" y1="1.4" x2="13" y2="3.6"></line><line x1="13" y1="22.4" x2="13" y2="24.6"></line>
+            <line x1="1.4" y1="13" x2="3.6" y2="13"></line><line x1="22.4" y1="13" x2="24.6" y2="13"></line>
+            <line x1="4.8" y1="4.8" x2="6.4" y2="6.4"></line><line x1="19.6" y1="19.6" x2="21.2" y2="21.2"></line>
+            <line x1="4.8" y1="21.2" x2="6.4" y2="19.6"></line><line x1="19.6" y1="6.4" x2="21.2" y2="4.8"></line>
+          </g>
+          <circle class="disc" cx="13" cy="13" r="7.3" mask="url(#moon-mask)"></circle>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <p class="lede">
+    <strong>Magnitude is the size of the earthquake; what you feel is the shaking where you are.</strong>
+    The same M7 is a violent jolt directly overhead and a slow sway 300 km away. So choose a
+    magnitude, then how far away you are, how deep it breaks and what ground you stand on.
+    The simulator estimates the Japanese intensity, <span lang="ja">震度</span> (shindo), you would
+    experience, and plays it out in a room.
+  </p>
+
+  <section>
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">01</span><h2>Simulator</h2><span class="en">Press play</span>
+      <span class="meta">Sound on for the full effect</span>
+    </div>
+    <div class="sim">
+      <div>
+        <div class="room" id="room">
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="hud"><span id="hud-phase">Ready</span><span id="hud-time">0.0 s</span></div>
+          <button class="room-play" id="room-play" type="button" aria-label="Play the earthquake">
+            <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2v10l8-5z"/></svg>
+          </button>
+        </div>
+        <figure class="trace" style="margin:12px 0 0">
+          <canvas id="trace" aria-hidden="true"></canvas>
+          <figcaption class="trace-foot">
+            <span class="tag">Ground motion · synthetic seismogram</span>
+            <span class="tag" id="trace-read">P-wave · S-wave · surface waves</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="panel">
+        <div class="est glow">
+          <div class="shindo lg none" id="est-chip">—</div>
+          <div>
+            <span class="tag k">Estimated intensity where you stand</span>
+            <p class="v" id="est-v">—</p>
+            <div class="s" id="est-s">&nbsp;</div>
+          </div>
+        </div>
+        <p class="feel-text" id="feel-text" aria-live="polite">&nbsp;</p>
+
+        <div class="ctl">
+          <div class="ctl-top"><span class="tag">Magnitude</span><output id="m-out">M 5.0</output></div>
+          <div class="mags" id="mags" role="group" aria-label="Magnitude presets"></div>
+          <input type="range" id="m" min="1" max="9.1" step="0.1" value="5" aria-label="Magnitude">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="tag">Distance from epicentre</span><output id="d-out">10 km</output></div>
+          <input type="range" id="d" min="0" max="400" step="1" value="10" aria-label="Distance from epicentre in kilometres">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="tag">Depth of the rupture</span><output id="z-out">10 km</output></div>
+          <input type="range" id="z" min="2" max="150" step="1" value="10" aria-label="Depth in kilometres">
+        </div>
+        <div class="ctl">
+          <span class="tag">Ground under you</span>
+          <div class="seg" id="soil" role="group" aria-label="Ground type">
+            <button type="button" data-soil="rock">Rock<small>×1.0</small></button>
+            <button type="button" data-soil="firm" aria-pressed="true">Firm soil<small>×1.4</small></button>
+            <button type="button" data-soil="soft">Soft basin<small>×2.1</small></button>
+          </div>
+        </div>
+
+        <button class="play" id="play" type="button">
+          <svg viewBox="0 0 14 14" aria-hidden="true"><path id="play-icon" d="M3 1.5v11l9-5.5z"/></svg>
+          <span id="play-label">Feel it</span>
+        </button>
+        <div class="opts">
+          <label><input type="checkbox" id="o-sound" checked> Sound</label>
+          <label><input type="checkbox" id="o-page"> Shake the whole page</label>
+          <label id="o-vib-l" hidden><input type="checkbox" id="o-vib" checked> Vibrate</label>
+          <label id="o-motion-l" hidden><input type="checkbox" id="o-motion"> Show motion</label>
+        </div>
+        <p class="note" id="note">Strong shaking lasts from a second or two at M3 to several minutes at M9.
+          The simulator plays it at real length; press stop at any time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">02</span><h2>Every magnitude</h2><span class="en">Each step ≈ 32× the energy</span>
+      <span class="meta">Frequencies: USGS, worldwide</span>
+    </div>
+    <div class="ladder" id="ladder"></div>
+    <p class="caveat">
+      <b>Why the numbers climb so steeply.</b> Each whole step in magnitude releases about
+      <b>32 times</b> more energy, so an M9 releases roughly a billion times the energy of an M3.
+      Bigger earthquakes also break a longer stretch of fault. That's why the strong shaking lasts
+      so much longer and reaches so much further, not just why it's stronger.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">03</span><h2>The shindo scale</h2><span class="en" lang="ja">震度階級</span>
+      <span class="meta">After the JMA intensity descriptions</span>
+    </div>
+    <ul class="scale" id="scale"></ul>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">04</span><h2>When it really shakes</h2><span class="en">What to do</span>
+    </div>
+    <div class="split">
+      <ol class="steps">
+        <li><span><b>Protect your head first.</b> Get under a sturdy table and hold on to its legs, or
+          cover your head with a cushion or bag. Drop, cover, hold on.</span></li>
+        <li><span><b>Keep away from what can fall.</b> Windows, shelves, tall furniture, hanging lights.</span></li>
+        <li><span><b>Don't run outside while it shakes.</b> Roof tiles, glass and signs fall into the street.</span></li>
+        <li><span><b>When it stops,</b> open a door so it can't jam shut, put shoes on against broken
+          glass, and expect aftershocks.</span></li>
+        <li><span><b>Near the coast, go to high ground at once</b> after strong or long shaking.
+          Don't wait for a tsunami warning.</span></li>
+      </ol>
+      <div class="prose">
+        <p><strong>Japan's early warning buys seconds.</strong> The first waves to arrive (P-waves) are fast
+        but weak; the damaging S-waves follow. The Earthquake Early Warning (<span lang="ja">緊急地震速報</span>)
+        uses that gap. The simulator shows it too: the further away you set the epicentre, the longer the
+        pause between the first jolt and the main shaking.</p>
+        <p>For official guidance, follow the
+        <a href="https://www.jma.go.jp/jma/en/Activities/earthquake.html">Japan Meteorological Agency</a>
+        and your local authority.</p>
+      </div>
+    </div>
+    <p class="caveat">
+      <b>This is an illustration, not a prediction.</b> The intensity comes from a published
+      ground-motion model for Japan (peak ground velocity after Si &amp; Midorikawa, 1999, converted to
+      JMA instrumental intensity after Fujimoto &amp; Midorikawa, 2005), with a simple factor for the
+      ground under you. Below M5.5, outside the data the relation was fitted to, a small correction
+      brings it in line with typical JMA reports. Real shaking varies a lot with fault geometry, direction and local soil, so the
+      same earthquake can differ by a whole intensity level between neighbouring streets. The waveform is
+      synthetic, and the room responds at the thresholds in JMA's intensity descriptions.
+    </p>
+  </section>
+
+  <footer>
+    Part of <a href="index.html" data-veil="monitor"><span lang="ja">安曇野</span> Seismic Watch</a>, a live seismic monitor for
+    Azumino City, Nagano. For any safety decision, follow the official bulletins of the Japan
+    Meteorological Agency and your local authority.
+    <div class="srcs">
+      <a href="index.html" data-veil="monitor">Live monitor</a>
+      <a href="https://www.jma.go.jp/jma/en/Activities/inttable.html">JMA intensity scale</a>
+      <a href="https://www.usgs.gov/programs/earthquake-hazards/earthquake-magnitude-energy-release-and-shaking-intensity">USGS magnitude &amp; intensity</a>
+    </div>
+  </footer>
+  <div class="coda" aria-hidden="true" lang="ja">揺れ</div>
+</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const root = document.documentElement;
+
+/* ── theme (shared with the monitor) ─────────────────────────────── */
+const isDark = () => getComputedStyle(root).colorScheme.includes("dark");
+try { const t = localStorage.getItem("azq-theme"); if (t) root.dataset.theme = t; } catch (e) {}
+const applyTheme = (next) => {
+  root.dataset.theme = next;
+  $("theme").setAttribute("aria-pressed", String(next === "dark"));
+  try { localStorage.setItem("azq-theme", next); } catch (e) {}
+  palette = null;
+};
+$("theme").setAttribute("aria-pressed", String(isDark()));
+$("theme").addEventListener("click", () => {
+  const next = isDark() ? "light" : "dark";
+  if (!document.startViewTransition || REDUCED){ applyTheme(next); return; }
+  const r = $("theme").getBoundingClientRect(), x = r.left + r.width/2, y = r.top + r.height/2;
+  const reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  document.startViewTransition(() => applyTheme(next)).ready.then(() => {
+    root.animate({clipPath:["circle(0px at " + x + "px " + y + "px)", "circle(" + reach + "px at " + x + "px " + y + "px)"]},
+      {duration:900, easing:"cubic-bezier(.22,.61,.24,1)", pseudoElement:"::view-transition-new(root)"});
+  }).catch(() => {});
+});
+
+/* ── the model ───────────────────────────────────────────────────────
+   Peak ground velocity on stiff ground from Si & Midorikawa (1999):
+     log PGV = 0.58 Mw + 0.0038 D − log(X + 0.0028·10^(0.5 Mw)) − 0.002 X − 1.29
+   with D the depth and X the shortest distance to the fault, approximated
+   here by letting the fault extend along the line to the viewer (length
+   from magnitude). Mw saturates at 8.3, the limit of the relation. A site
+   factor stands for the ground. PGV becomes JMA instrumental intensity by
+   Fujimoto & Midorikawa (2005): I = 2.002 + 2.603 log PGV − 0.213 (log PGV)². */
+const SOIL = {rock:1.0, firm:1.4, soft:2.1};
+const faultLength = (M) => Math.pow(10, 0.5 * M - 1.85);               // km
+function estimate(M, epi, depth, soil){
+  const Mw = Math.min(M, 8.3);
+  const X = Math.max(3, Math.hypot(Math.max(0, epi - faultLength(M) / 2), depth));
+  const logv = 0.58 * Mw + 0.0038 * depth - Math.log10(X + 0.0028 * Math.pow(10, 0.5 * Mw))
+             - 0.002 * X - 1.29;
+  const pgv = Math.pow(10, logv) * SOIL[soil];
+  const L = Math.log10(pgv);
+  /* the relation was fitted to M5.5 and above; below that it reads low
+     against typical JMA reports, so small events get a gentle lift */
+  const lift = M < 5.5 ? .25 * (5.5 - M) : 0;
+  const I = Math.max(-1, Math.min(7.3, 2.002 + 2.603 * L - 0.213 * L * L + lift));
+  return {I, pgv, pga:Math.pow(10, (I - 0.94) / 2), X};              // pga in gal (JMA 1996 relation)
+}
+const CLASSES = [
+  {k:"0", lo:-9, c:null, mmi:"I"},   {k:"1", lo:.5, c:"var(--s1)", mmi:"II"},
+  {k:"2", lo:1.5, c:"var(--s2)", mmi:"III"}, {k:"3", lo:2.5, c:"var(--s3)", mmi:"IV"},
+  {k:"4", lo:3.5, c:"var(--s4)", mmi:"V"},   {k:"5-", lo:4.5, c:"var(--s5m)", mmi:"VI"},
+  {k:"5+", lo:5.0, c:"var(--s5p)", mmi:"VII"}, {k:"6-", lo:5.5, c:"var(--s6m)", mmi:"VIII"},
+  {k:"6+", lo:6.0, c:"var(--s6p)", mmi:"IX"}, {k:"7", lo:6.5, c:"var(--s7)", mmi:"X+"}
+];
+const classOf = (I) => CLASSES.reduce((a, c) => I >= c.lo ? c : a, CLASSES[0]);
+/* one inline box, so the chip's grid centres "6⁻" as a single item */
+const chipHTML = (k) => k === "0" ? "0" :
+  "<span>" + k[0] + (k[1] === "-" ? "<sup>−</sup>" : k[1] === "+" ? "<sup>+</sup>" : "") + "</span>";
+const NAME = {"0":"Shindo 0", "1":"Shindo 1", "2":"Shindo 2", "3":"Shindo 3", "4":"Shindo 4",
+  "5-":"Shindo 5 lower", "5+":"Shindo 5 upper", "6-":"Shindo 6 lower", "6+":"Shindo 6 upper", "7":"Shindo 7"};
+/* after the JMA intensity descriptions (気象庁震度階級関連解説表) */
+const FEEL = {
+  "0":"<b>Not felt.</b> People don't notice it; only seismometers record it.",
+  "1":"<b>Barely felt.</b> A few people sitting quietly indoors notice a faint tremor.",
+  "2":"<b>Felt by many indoors.</b> Some sleeping people wake. Hanging lights sway a little.",
+  "3":"<b>Felt by nearly everyone indoors.</b> Some people are frightened. Dishes in cupboards rattle; power lines sway.",
+  "4":"<b>Most people are startled.</b> Hanging lights swing hard, dishes rattle loudly, unstable ornaments may fall. Most sleepers wake.",
+  "5-":"<b>Many people are frightened and grab something to hold.</b> Dishes and books start to fall; unsecured furniture may shift.",
+  "5+":"<b>Hard to walk without holding on.</b> Many dishes and books fall. Unsecured furniture can topple.",
+  "6-":"<b>Hard to stay standing.</b> Much unsecured furniture moves or topples, doors jam, windows and wall tiles can break.",
+  "6+":"<b>You can only crawl.</b> Most unsecured furniture moves and much of it topples. Weak buildings may be damaged.",
+  "7":"<b>You are thrown by the shaking.</b> Furniture topples or flies. Buildings with low earthquake resistance are likely to collapse."
+};
+/* strong-motion duration grows with the length of the rupture */
+const DUR = [[1,.8],[2,1.2],[3,2],[4,3.5],[5,7],[6,14],[7,32],[8,75],[9,160]];
+const duration = (M) => {
+  for (let i = 1; i < DUR.length; i++) if (M <= DUR[i][0]){
+    const [m0, d0] = DUR[i-1], [m1, d1] = DUR[i], k = (M - m0) / (m1 - m0);
+    return d0 * Math.pow(d1 / d0, k);
+  }
+  return DUR[DUR.length - 1][1];
+};
+const secs = (s) => s < 10 ? s.toFixed(1) + " s" : s < 90 ? Math.round(s) + " s" : (s / 60).toFixed(1) + " min";
+
+/* ── state and controls ──────────────────────────────────────────── */
+const S = {M:5, d:10, z:10, soil:"firm"};
+const PRESETS = [1,2,3,4,5,6,7,8,9];
+const presetColour = (M) => classOf(estimate(M, 10, 10, "firm").I).c || "var(--rule)";
+$("mags").innerHTML = PRESETS.map(m =>
+  '<button type="button" data-m="' + m + '" style="--c:' + presetColour(m) + '" aria-pressed="false">' + m + "</button>").join("");
+
+const fill = (el) => el.style.setProperty("--p", ((el.value - el.min) / (el.max - el.min) * 100) + "%");
+function sync(){
+  $("m").value = S.M; $("d").value = S.d; $("z").value = S.z;
+  ["m","d","z"].forEach(id => fill($(id)));
+  $("m-out").textContent = "M " + S.M.toFixed(1);
+  $("d-out").textContent = S.d + " km";
+  $("z-out").textContent = S.z + " km";
+  [...$("mags").children].forEach(b => b.setAttribute("aria-pressed", String(Math.abs(+b.dataset.m - S.M) < .05)));
+  [...$("soil").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.soil === S.soil)));
+  const e = estimate(S.M, S.d, S.z, S.soil), c = classOf(e.I);
+  const chip = $("est-chip");
+  chip.className = "shindo lg" + (c.k === "0" ? " none" : "");
+  chip.style.background = c.c || "";
+  chip.innerHTML = c.k === "0" ? "0" : chipHTML(c.k);
+  $("est-v").textContent = NAME[c.k];
+  const td = duration(S.M) * (1 + S.d / 250);
+  const sp = Math.hypot(S.d, S.z) * (1 / 3.6 - 1 / 6.4);
+  $("est-s").textContent = "≈ MMI " + c.mmi + " · I " + e.I.toFixed(1) + " · PGV " +
+    (e.pgv < 1 ? e.pgv.toFixed(2) : e.pgv.toFixed(0)) + " cm/s · shaking ≈ " + secs(td) +
+    (sp >= 1 ? " · S-wave " + sp.toFixed(0) + " s after P" : "");
+  $("feel-text").innerHTML = FEEL[c.k];
+  [...$("scale").children].forEach(li => li.classList.toggle("cur", li.dataset.k === c.k));
+  try { history.replaceState(null, "", "?m=" + S.M.toFixed(1) + "&d=" + S.d + "&z=" + S.z + "&g=" + S.soil); } catch (err) {}
+  if (!sim) drawScene(0);
+}
+const set = (patch) => { stop(); Object.assign(S, patch); sync(); };
+$("m").addEventListener("input", (e) => set({M:+e.target.value}));
+$("d").addEventListener("input", (e) => set({d:+e.target.value}));
+$("z").addEventListener("input", (e) => set({z:+e.target.value}));
+$("mags").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) set({M:+b.dataset.m}); });
+$("soil").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) set({soil:b.dataset.soil}); });
+
+/* ── the ladder and the scale ────────────────────────────────────── */
+const LADDER = [
+  {m:1, per:"millions", eg:"Recorded only by instruments. Countless every day."},
+  {m:2, per:"≈ 1,300,000", eg:"Occasionally felt right above it. Japan records many every day."},
+  {m:3, per:"≈ 130,000", eg:"Often felt nearby. Japan feels one most days."},
+  {m:4, per:"≈ 13,000", eg:"Clearly felt across a town; a jolt that makes the news in Japan."},
+  {m:5, per:"≈ 1,300", eg:"Strong locally; shelves empty near the epicentre. Several a month around Japan."},
+  {m:6, per:"≈ 130", eg:"2014 Nagano north (Kamishiro fault), M6.7, 40 km from Azumino: shindo 6 lower in Hakuba."},
+  {m:7, per:"≈ 15", eg:"1995 Kobe (Great Hanshin), M7.3: shindo 7. 2024 Noto Peninsula, M7.6: shindo 7."},
+  {m:8, per:"≈ 1", eg:"2003 Tokachi-oki, M8.0, off Hokkaido: shindo 6 lower along the coast."},
+  {m:9, per:"≈ 1 in 25 years", eg:"2011 Tōhoku, M9.0: shindo 7, with shaking lasting several minutes, then the tsunami."}
+];
+/* energy relative to M1: ×10^1.5 per step, written the way people say it */
+const energy = (m) => {
+  const e = Math.pow(10, 1.5 * (m - 1));
+  return e < 1000 ? String(Math.round(e))
+    : new Intl.NumberFormat("en", {notation:"compact", compactDisplay:"long", maximumFractionDigits:0}).format(e);
+};
+$("ladder").innerHTML = LADDER.map(r => {
+  const a = classOf(estimate(r.m, 0, 10, "firm").I), b = classOf(estimate(r.m, 100, 10, "firm").I);
+  const w = (4 + (r.m - 1) / 8 * 96).toFixed(1) + "%";
+  const chip = (c) => '<span class="chip' + (c.k === "0" ? " zero" : "") + '"' +
+    (c.c ? ' style="background:' + c.c + '"' : "") + ">" + chipHTML(c.k) + "</span>";
+  return '<article class="rung" tabindex="0" role="button" data-m="' + r.m + '" aria-label="Simulate magnitude ' + r.m + '">' +
+    '<div class="rung-top"><span class="mag"><em>M</em>' + r.m + '</span>' +
+    '<span class="tag">×' + energy(r.m) + ' energy</span></div>' +
+    '<div class="energy" aria-hidden="true"><i style="--w:' + w + '"></i></div>' +
+    "<dl><dt>Directly above</dt><dd>" + chip(a) + "</dd>" +
+    "<dt>At 100 km</dt><dd>" + chip(b) + "</dd>" +
+    "<dt>Strong shaking</dt><dd>" + secs(duration(r.m)) + "</dd>" +
+    "<dt>Per year, world</dt><dd>" + r.per + "</dd></dl>" +
+    '<p class="eg">' + r.eg + "</p></article>";
+}).join("");
+const pickRung = (el) => {
+  set({M:+el.dataset.m, d:10, z:10});
+  document.querySelector(".sim").scrollIntoView({behavior:REDUCED ? "auto" : "smooth", block:"start"});
+};
+$("ladder").addEventListener("click", (e) => { const r = e.target.closest(".rung"); if (r) pickRung(r); });
+$("ladder").addEventListener("keydown", (e) => {
+  const r = e.target.closest(".rung");
+  if (r && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); pickRung(r); }
+});
+$("scale").innerHTML = CLASSES.map(c =>
+  '<li data-k="' + c.k + '"><div class="shindo' + (c.k === "0" ? " none" : "") + '"' +
+  (c.c ? ' style="background:' + c.c + '"' : "") + ">" + chipHTML(c.k) + "</div>" +
+  "<p>" + FEEL[c.k] + '</p><span class="mmi">≈ MMI ' + c.mmi + "</span></li>").join("");
+
+/* ── the waveform ────────────────────────────────────────────────────
+   Three arrivals, each band-limited noise under its own envelope: the
+   P-wave (fast, weak, high-pitched), the S-wave (the main shaking) and,
+   for large events, surface waves (slow, long, rolling). Arrival times
+   follow the distance at 6.4 and 3.6 km/s; the wait before the P-wave
+   is trimmed to a second so nobody sits through silence. */
+const HZ = 60;
+function rng(seed){ return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+function band(r, f1, f2, k){
+  const f = [], p = [], a = [];
+  for (let i = 0; i < k; i++){ f.push(f1 + (f2 - f1) * r()); p.push(r() * 6.283); a.push(.5 + r()); }
+  const norm = Math.sqrt(a.reduce((s, x) => s + x * x, 0) / 2);
+  return (t) => { let s = 0; for (let i = 0; i < k; i++) s += a[i] * Math.sin(6.283 * f[i] * t + p[i]); return s / norm; };
+}
+function synth(M, d, z){
+  const R = Math.hypot(d, z), Td = duration(M) * (1 + d / 250);
+  const tP = 1, tS = tP + R * (1 / 3.6 - 1 / 6.4);
+  const r = rng(Math.round(M * 100 + d * 7 + z * 13) + 1);
+  const nP = band(r, 5, 11, 12), nS = band(r, 1.2, 4.5, 14), nL = band(r, .18, .7, 8);
+  const surf = Math.max(0, Math.min(1, (M - 5.8) / 2)) * (0.55 + Math.min(.45, d / 400));
+  const rise = .3 + Td * .12, hold = Td * .55, fade = Td * .38 + .8;
+  const T = tS + rise + hold + fade * 4 + (surf ? Td * .6 : 0) + 1;
+  const N = Math.ceil(T * HZ), s = new Float32Array(N), env = new Float32Array(N), ph = new Uint8Array(N);
+  let peak = 0;
+  for (let i = 0; i < N; i++){
+    const t = i / HZ;
+    const eP = t < tP ? 0 : .26 * (1 - Math.exp(-(t - tP) / .12)) * Math.exp(-(t - tP) / (1.2 + Td * .3));
+    let eS = 0;
+    if (t >= tS){
+      const u = t - tS;
+      eS = u < rise ? Math.pow(u / rise, 1.6) : u < rise + hold ? 1 : Math.exp(-(u - rise - hold) / fade);
+    }
+    let eL = 0;
+    if (surf && t >= tS + Td * .15){
+      const u = t - tS - Td * .15, rl = Td * .3, hl = Td * .7, fl = Td * .6;
+      eL = surf * (u < rl ? u / rl : u < rl + hl ? 1 : Math.exp(-(u - rl - hl) / fl));
+    }
+    s[i] = eP * nP(t) + eS * nS(t) + eL * nL(t) * 1.3;
+    env[i] = Math.max(eP / .26 * .25, eS, eL);
+    ph[i] = t < tP ? 0 : t < tS ? 1 : eL > eS * .9 && surf ? 3 : eS > .08 ? 2 : 4;
+    peak = Math.max(peak, Math.abs(s[i]));
+  }
+  for (let i = 0; i < N; i++) s[i] /= peak || 1;
+  return {s, env, ph, N, T, tP, tS};
+}
+const PHASE = ["Waiting", "P-wave · the first jolt", "S-wave · the main shaking", "Surface waves · slow rolling", "Shaking fades"];
+
+/* ── the room ────────────────────────────────────────────────────────
+   Drawn in an 800×450 frame and scaled to fit. Everything that can move
+   is an object with a threshold taken from the JMA descriptions: things
+   rattle from shindo 3, ornaments fall from 4, books and dishes from 5,
+   furniture from 6. Loose objects fall under gravity and come to rest. */
+const W = 800, H = 450, FLOOR = 392;
+const cv = $("scene"), cx = cv.getContext("2d");
+const tv = $("trace"), tx = tv.getContext("2d");
+let palette = null;
+function colours(){
+  if (palette) return palette;
+  const cs = getComputedStyle(root), v = (n) => cs.getPropertyValue(n).trim();
+  const dark = isDark();
+  palette = {
+    dark, paper:v("--paper"), ground:v("--ground"), sink:v("--sink"), ink:v("--ink"), ink2:v("--ink-2"),
+    ink3:v("--ink-3"), rule:v("--rule"), ai:v("--ai"), live:v("--live"),
+    wall: dark ? "#161B20" : "#EEF0EA", wall2: dark ? "#12161A" : "#E4E7E0",
+    floor: dark ? "#2A2119" : "#B99B78", floor2: dark ? "#221A13" : "#A8896A",
+    wood: dark ? "#4B3A2A" : "#9C7650", wood2: dark ? "#3A2C20" : "#7F5E3F",
+    sky1: dark ? "#07111A" : "#AFC6D4", sky2: dark ? "#1A2B38" : "#E6EDEF",
+    mtn: dark ? "#0B141B" : "#6F8797", mtn2: dark ? "#111D26" : "#93A8B5", snow: dark ? "#8FA3B0" : "#F4F7F8",
+    tatami: dark ? "#2B2C1F" : "#C9C08F", glow: dark ? "255,214,150" : "255,226,170", glowA: dark ? .2 : .28
+  };
+  return palette;
+}
+const BOOKS = ["#6C7F8C","#9A6B4F","#4E6A5C","#8C7A55","#5B5F7A","#A0524A","#3F5563","#7D6A8A","#58795F","#9B8756"];
+function makeObjects(){
+  const o = [];
+  const r = rng(7);
+  /* books on two shelves */
+  [[112, 229], [112, 301]].forEach(([x0, yb], shelf) => {
+    let x = x0 + 4;
+    for (let i = 0; i < 8; i++){
+      const w = 9 + r() * 6, h = 38 + r() * 18;
+      o.push({kind:"book", x:x + w/2, y:yb - h/2, w, h, c:BOOKS[(i + shelf * 3) % BOOKS.length],
+              rattle:2.8, fall:4.6 + r() * 1.2, trig:.35 + r() * .5, rot:0});
+      x += w + 1.5;
+    }
+  });
+  o.push({kind:"vase", x:150, y:141, w:22, h:40, rattle:2.6, fall:4.1, trig:.5, rot:0});
+  o.push({kind:"clock", x:212, y:150, w:26, h:22, rattle:2.6, fall:5.0, trig:.55, rot:0});
+  o.push({kind:"cup", x:375, y:332, w:16, h:14, rattle:2.5, fall:5.1, trig:.5, rot:0});
+  o.push({kind:"glass", x:412, y:330, w:14, h:18, rattle:2.5, fall:5.4, trig:.6, rot:0});
+  o.push({kind:"pot", x:447, y:330, w:28, h:22, rattle:2.8, fall:5.6, trig:.65, rot:0});
+  o.push({kind:"frame", x:330, y:112, w:64, h:46, rattle:3.2, fall:6.0, trig:.55, rot:0, pend:{th:0, w:0}});
+  o.push({kind:"tansu", x:708, y:FLOOR - 105, w:92, h:210, rattle:4.5, fall:6.0, trig:.55, rot:0, slide:5.4});
+  o.forEach(ob => { ob.x0 = ob.x; ob.y0 = ob.y; });
+  return o;
+}
+let objs = makeObjects();
+const lamp = {x:548, top:-40, len:168, th:0, w:0};
+let dust = [], crack = 0, flicker = 1, seismo = [];
+
+function fit(){
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const q = tv.getBoundingClientRect();
+  tv.width = Math.round(q.width * dpr); tv.height = Math.round(q.height * dpr);
+  if (!sim) drawScene(0);
+}
+new ResizeObserver(fit).observe($("room"));
+
+function rrect(x, y, w, h, r){ cx.beginPath(); cx.roundRect ? cx.roundRect(x, y, w, h, r) : cx.rect(x, y, w, h); }
+function drawObj(ob, p){
+  cx.save(); cx.translate(ob.x, ob.y); cx.rotate(ob.rot);
+  const {w, h} = ob;
+  switch (ob.kind){
+    case "book":
+      cx.fillStyle = ob.c; cx.fillRect(-w/2, -h/2, w, h);
+      cx.fillStyle = "rgba(255,255,255,.18)"; cx.fillRect(-w/2 + 2, -h/2 + 5, w - 4, 2); cx.fillRect(-w/2 + 2, h/2 - 8, w - 4, 2);
+      break;
+    case "vase":
+      cx.fillStyle = p.dark ? "#3E5A6A" : "#4E7793";
+      cx.beginPath(); cx.moveTo(-5, -h/2); cx.lineTo(5, -h/2); cx.quadraticCurveTo(14, -2, 9, h/2);
+      cx.lineTo(-9, h/2); cx.quadraticCurveTo(-14, -2, -5, -h/2); cx.fill();
+      cx.strokeStyle = p.dark ? "#6E8C3F" : "#5E7F3A"; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.moveTo(0, -h/2); cx.quadraticCurveTo(-8, -h, -14, -h - 6); cx.moveTo(0, -h/2); cx.quadraticCurveTo(6, -h - 4, 12, -h - 10); cx.stroke();
+      break;
+    case "clock":
+      cx.fillStyle = p.wood2; rrect(-w/2, -h/2, w, h, 3); cx.fill();
+      cx.fillStyle = p.paper; cx.beginPath(); cx.arc(0, 0, 8, 0, 6.283); cx.fill();
+      cx.strokeStyle = p.ink; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(0, -6); cx.moveTo(0, 0); cx.lineTo(4, 2); cx.stroke();
+      break;
+    case "cup":
+      cx.fillStyle = p.dark ? "#C9CFC8" : "#F6F6F0"; cx.strokeStyle = p.ink3; cx.lineWidth = 1;
+      rrect(-w/2, -h/2, w, h, 3); cx.fill(); cx.stroke();
+      cx.fillStyle = "#5E7F3A"; cx.fillRect(-w/2 + 2, -h/2 + 2, w - 4, 3);
+      break;
+    case "glass": {
+      cx.strokeStyle = p.ink3; cx.lineWidth = 1; cx.fillStyle = p.dark ? "rgba(140,180,210,.18)" : "rgba(120,160,190,.18)";
+      cx.beginPath(); cx.moveTo(-w/2, -h/2); cx.lineTo(w/2, -h/2); cx.lineTo(w/2 - 2, h/2); cx.lineTo(-w/2 + 2, h/2); cx.closePath(); cx.fill(); cx.stroke();
+      /* water surface tilts with the ground's acceleration */
+      const tilt = Math.max(-5, Math.min(5, (ob.slosh || 0)));
+      cx.fillStyle = p.dark ? "rgba(120,170,210,.55)" : "rgba(80,140,190,.45)";
+      cx.beginPath(); cx.moveTo(-w/2 + 1.5, -1 + tilt); cx.lineTo(w/2 - 1.5, -1 - tilt); cx.lineTo(w/2 - 2.2, h/2 - 1); cx.lineTo(-w/2 + 2.2, h/2 - 1); cx.closePath(); cx.fill();
+      break; }
+    case "pot":
+      cx.fillStyle = p.dark ? "#2C3136" : "#3C444B";
+      rrect(-w/2, -h/2 + 4, w, h - 4, 6); cx.fill();
+      cx.fillRect(-4, -h/2, 8, 5); cx.strokeStyle = cx.fillStyle; cx.lineWidth = 2.5;
+      cx.beginPath(); cx.moveTo(w/2 - 2, -2); cx.quadraticCurveTo(w/2 + 10, -6, w/2 + 12, -12); cx.stroke();
+      break;
+    case "frame":
+      cx.strokeStyle = p.ink3; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(-18, -h/2); cx.lineTo(0, -h/2 - 16); cx.lineTo(18, -h/2); cx.stroke();
+      cx.fillStyle = p.wood2; cx.fillRect(-w/2, -h/2, w, h);
+      cx.fillStyle = p.dark ? "#1E2A33" : "#DCE4E6"; cx.fillRect(-w/2 + 5, -h/2 + 5, w - 10, h - 10);
+      cx.fillStyle = p.dark ? "#34485A" : "#8FA6B5";
+      cx.beginPath(); cx.moveTo(-w/2 + 5, h/2 - 5); cx.lineTo(-6, -6); cx.lineTo(4, 4); cx.lineTo(12, -2); cx.lineTo(w/2 - 5, h/2 - 5); cx.fill();
+      cx.fillStyle = p.live; cx.beginPath(); cx.arc(16, -12, 4, 0, 6.283); cx.fill();
+      break;
+    case "tansu":
+      cx.fillStyle = p.wood; cx.fillRect(-w/2, -h/2, w, h);
+      cx.strokeStyle = p.wood2; cx.lineWidth = 2;
+      for (let i = 1; i < 5; i++){ const y = -h/2 + i * h / 5; cx.beginPath(); cx.moveTo(-w/2, y); cx.lineTo(w/2, y); cx.stroke(); }
+      cx.fillStyle = p.dark ? "#8A7A5A" : "#3A3026";
+      for (let i = 0; i < 5; i++){ const y = -h/2 + (i + .5) * h / 5; cx.fillRect(-12, y - 2, 24, 4); }
+      break;
+  }
+  cx.restore();
+}
+
+function drawScene(t){
+  const p = colours();
+  cx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+  const g = sim ? sim.cam(t) : {x:0, y:0};
+  cx.clearRect(0, 0, W, H);
+  cx.save(); cx.translate(g.x, g.y);
+  /* wall, floor */
+  cx.fillStyle = p.wall; cx.fillRect(-40, -40, W + 80, FLOOR + 40);
+  const wg = cx.createLinearGradient(0, 0, 0, FLOOR); wg.addColorStop(0, p.wall2); wg.addColorStop(1, p.wall);
+  cx.fillStyle = wg; cx.fillRect(-40, -40, W + 80, FLOOR + 40);
+  cx.fillStyle = p.tatami; cx.fillRect(-40, FLOOR, W + 80, H - FLOOR + 40);
+  cx.strokeStyle = "rgba(0,0,0,.12)"; cx.lineWidth = 1;
+  for (let x = -40; x < W + 40; x += 180){ cx.beginPath(); cx.moveTo(x, FLOOR); cx.lineTo(x - 60, H + 40); cx.stroke(); }
+  cx.fillStyle = p.wood2; cx.fillRect(-40, FLOOR - 6, W + 80, 6);
+  /* window onto the Northern Alps — Jōnen-dake's pyramid */
+  const wx = 470, wy = 58, ww = 210, wh = 170;
+  const sky = cx.createLinearGradient(0, wy, 0, wy + wh); sky.addColorStop(0, p.sky1); sky.addColorStop(1, p.sky2);
+  cx.fillStyle = sky; cx.fillRect(wx, wy, ww, wh);
+  if (p.dark){ cx.fillStyle = "rgba(240,236,220,.9)"; cx.beginPath(); cx.arc(wx + 160, wy + 36, 9, 0, 6.283); cx.fill(); }
+  cx.fillStyle = p.mtn2; cx.beginPath(); cx.moveTo(wx, wy + 130); cx.lineTo(wx + 40, wy + 104); cx.lineTo(wx + 70, wy + 116);
+  cx.lineTo(wx + 150, wy + 92); cx.lineTo(wx + ww, wy + 112); cx.lineTo(wx + ww, wy + wh); cx.lineTo(wx, wy + wh); cx.fill();
+  cx.fillStyle = p.mtn; cx.beginPath(); cx.moveTo(wx, wy + 150); cx.lineTo(wx + 52, wy + 118); cx.lineTo(wx + 96, wy + 70);
+  cx.lineTo(wx + 140, wy + 122); cx.lineTo(wx + ww, wy + 140); cx.lineTo(wx + ww, wy + wh); cx.lineTo(wx, wy + wh); cx.fill();
+  cx.fillStyle = p.snow; cx.beginPath(); cx.moveTo(wx + 96, wy + 70); cx.lineTo(wx + 86, wy + 82); cx.lineTo(wx + 93, wy + 80);
+  cx.lineTo(wx + 98, wy + 86); cx.lineTo(wx + 106, wy + 81); cx.closePath(); cx.fill();
+  cx.strokeStyle = p.wood2; cx.lineWidth = 6; cx.strokeRect(wx, wy, ww, wh);
+  cx.lineWidth = 2; cx.beginPath(); cx.moveTo(wx + ww / 2, wy); cx.lineTo(wx + ww / 2, wy + wh);
+  cx.moveTo(wx, wy + wh / 2); cx.lineTo(wx + ww, wy + wh / 2); cx.stroke();
+  if (crack > 0){
+    cx.strokeStyle = p.dark ? "rgba(220,230,235,.55)" : "rgba(255,255,255,.9)"; cx.lineWidth = 1;
+    const cxp = wx + 140, cyp = wy + 60, rr = rng(3);
+    for (let i = 0; i < 9; i++){
+      const a = i / 9 * 6.283 + rr() * .4, L = (20 + rr() * 55) * crack;
+      cx.beginPath(); cx.moveTo(cxp, cyp);
+      cx.lineTo(cxp + Math.cos(a) * L * .5 + rr() * 6, cyp + Math.sin(a) * L * .5 + rr() * 6);
+      cx.lineTo(cxp + Math.cos(a) * L, cyp + Math.sin(a) * L); cx.stroke();
+    }
+  }
+  /* shelf */
+  cx.fillStyle = p.wood; cx.fillRect(100, 162, 150, 10); cx.fillRect(100, 229, 150, 8); cx.fillRect(100, 301, 150, 8);
+  cx.fillRect(100, 162, 8, FLOOR - 162); cx.fillRect(242, 162, 8, FLOOR - 162);
+  cx.fillStyle = p.wood2; cx.fillRect(108, 309, 134, FLOOR - 309);
+  /* low table (chabudai) */
+  cx.fillStyle = p.wood; rrect(340, 340, 150, 10, 3); cx.fill();
+  cx.fillStyle = p.wood2; cx.fillRect(356, 350, 8, FLOOR - 350); cx.fillRect(466, 350, 8, FLOOR - 350);
+  /* objects, fallen ones last so they lie on top */
+  objs.filter(o => !o.free).forEach(o => drawObj(o, p));
+  objs.filter(o => o.free).forEach(o => drawObj(o, p));
+  /* pendant lamp, a pendulum on its cord */
+  const lx = lamp.x + Math.sin(lamp.th) * lamp.len, ly = lamp.top + Math.cos(lamp.th) * lamp.len;
+  cx.strokeStyle = p.ink2; cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(lamp.x, lamp.top); cx.lineTo(lx, ly); cx.stroke();
+  cx.save(); cx.translate(lx, ly); cx.rotate(-lamp.th);
+  if (flicker > .05){
+    const gl = cx.createRadialGradient(0, 22, 4, 0, 60, 190);
+    gl.addColorStop(0, "rgba(" + p.glow + "," + (p.glowA * flicker).toFixed(3) + ")");
+    gl.addColorStop(1, "rgba(" + p.glow + ",0)");
+    cx.fillStyle = gl; cx.beginPath(); cx.arc(0, 60, 190, 0, 6.283); cx.fill();
+  }
+  cx.fillStyle = p.dark ? "#C7B79A" : "#EFE6D2"; cx.strokeStyle = p.ink3; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(-10, 0); cx.lineTo(10, 0); cx.lineTo(34, 30); cx.lineTo(-34, 30); cx.closePath(); cx.fill(); cx.stroke();
+  cx.fillStyle = flicker > .5 ? "#FFE7B0" : "#6B6254"; cx.beginPath(); cx.arc(0, 31, 6, 0, 3.1416); cx.fill();
+  cx.restore();
+  /* plaster dust */
+  cx.fillStyle = p.dark ? "rgba(210,210,200,.5)" : "rgba(120,110,95,.45)";
+  dust.forEach(d => { cx.beginPath(); cx.arc(d.x, d.y, d.r, 0, 6.283); cx.fill(); });
+  cx.restore();
+  /* a faint vignette */
+  const vg = cx.createRadialGradient(W/2, H/2, H * .35, W/2, H/2, W * .72);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, p.dark ? "rgba(0,0,0,.45)" : "rgba(40,40,30,.16)");
+  cx.fillStyle = vg; cx.fillRect(0, 0, W, H);
+}
+
+/* ── the trace under the room ─────────────────────────────────────── */
+function drawTrace(t){
+  const p = colours(), w = tv.width, h = tv.height, span = 14;
+  tx.setTransform(1, 0, 0, 1, 0, 0); tx.clearRect(0, 0, w, h);
+  tx.strokeStyle = p.rule; tx.lineWidth = 1; tx.beginPath(); tx.moveTo(0, h/2); tx.lineTo(w, h/2); tx.stroke();
+  if (!sim) return;
+  const t0 = Math.max(0, t - span * .8);
+  const mark = (tt, label) => {
+    if (tt < t0 || tt > t0 + span) return;
+    const x = (tt - t0) / span * w;
+    tx.strokeStyle = p.ai; tx.globalAlpha = .6; tx.setLineDash([3, 4]);
+    tx.beginPath(); tx.moveTo(x, 0); tx.lineTo(x, h); tx.stroke(); tx.setLineDash([]); tx.globalAlpha = 1;
+    tx.fillStyle = p.ai; tx.font = (10 * (w / tv.clientWidth)) + "px JetBrains Mono, monospace"; tx.fillText(label, x + 5, 12 * (w / tv.clientWidth));
+  };
+  mark(sim.tP, "P"); mark(sim.tS, "S");
+  tx.strokeStyle = p.ink2; tx.lineWidth = 1.2 * (w / tv.clientWidth); tx.beginPath();
+  const a = Math.min(1, .25 + sim.level * .75);
+  for (let x = 0; x < w; x += 1){
+    const tt = t0 + x / w * span;
+    if (tt > t) break;
+    const i = Math.min(sim.N - 1, Math.floor(tt * HZ));
+    const y = h/2 - sim.s[i] * a * h * .44;
+    x ? tx.lineTo(x, y) : tx.moveTo(x, y);
+  }
+  tx.stroke();
+  const x = (t - t0) / span * w;
+  tx.fillStyle = p.live; tx.beginPath(); tx.arc(Math.min(x, w - 4), h/2 - (sim.s[Math.min(sim.N - 1, Math.floor(t * HZ))] || 0) * a * h * .44, 3.5 * (w / tv.clientWidth), 0, 6.283); tx.fill();
+}
+
+/* ── sound ───────────────────────────────────────────────────────────
+   A low rumble (noise through a steep low-pass) whose loudness follows the
+   shaking, a rattle band that opens from shindo 3, and a thud each time
+   something lands. */
+let AC = null, rumbleG, rattleG, noiseBuf;
+function audio(){
+  if (AC) return AC;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return null;
+  AC = new C();
+  noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+  const ch = noiseBuf.getChannelData(0); let last = 0;
+  for (let i = 0; i < ch.length; i++){ const w = Math.random() * 2 - 1; last = (last + .02 * w) / 1.02; ch[i] = last * 3.5 + w * .02; }
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 110; lp.Q.value = .7;
+  rumbleG = AC.createGain(); rumbleG.gain.value = 0;
+  src.connect(lp).connect(rumbleG).connect(AC.destination); src.start();
+  const white = AC.createBuffer(1, AC.sampleRate, AC.sampleRate), wc = white.getChannelData(0);
+  for (let i = 0; i < wc.length; i++) wc[i] = Math.random() * 2 - 1;
+  const src2 = AC.createBufferSource(); src2.buffer = white; src2.loop = true;
+  const bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 2.5;
+  rattleG = AC.createGain(); rattleG.gain.value = 0;
+  src2.connect(bp).connect(rattleG).connect(AC.destination); src2.start();
+  return AC;
+}
+function thud(size){
+  if (!AC || !$("o-sound").checked) return;
+  const s = AC.createBufferSource(); s.buffer = noiseBuf;
+  const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 180 + 500 / size;
+  const g = AC.createGain(), t = AC.currentTime;
+  g.gain.setValueAtTime(Math.min(.9, .12 * size), t); g.gain.exponentialRampToValueAtTime(.001, t + .25 + size * .05);
+  s.connect(f).connect(g).connect(AC.destination); s.start(t, Math.random()); s.stop(t + .6);
+}
+
+/* ── the run ──────────────────────────────────────────────────────── */
+let sim = null, raf = 0;
+function start(){
+  const e = estimate(S.M, S.d, S.z, S.soil), w = synth(S.M, S.d, S.z);
+  const motion = !REDUCED || $("o-motion").checked;
+  const px = Math.min(30, .62 * Math.pow(e.pgv, .62)) * (motion ? 1 : 0);   // on-screen sway
+  const level = Math.max(0, Math.min(1, (e.I + .5) / 7.3));
+  objs = makeObjects(); lamp.th = 0; lamp.w = 0; dust = []; crack = 0; flicker = 1;
+  sim = Object.assign(w, {I:e.I, pga:e.pga, px, level, motion, t0:0, last:0,
+    cam(t){ const i = Math.min(this.N - 1, Math.max(0, Math.floor(t * HZ))), j = Math.max(0, i - 8);
+            return {x:this.s[i] * this.px, y:this.s[j] * this.px * .28}; }});
+  if ($("o-sound").checked){ const a = audio(); if (a && a.state === "suspended") a.resume(); }
+  $("play").classList.add("on"); $("play-label").textContent = "Stop";
+  $("room").classList.add("playing");
+  /* on a phone the controls sit below the room: bring the room into view */
+  const rr = $("room").getBoundingClientRect();
+  if (rr.top < 0 || rr.bottom > innerHeight)
+    $("room").scrollIntoView({behavior:REDUCED ? "auto" : "smooth", block:"center"});
+  $("play-icon").setAttribute("d", "M2.5 2.5h9v9h-9z");
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(step);
+}
+function stop(){
+  if (!sim) return;
+  sim = null; cancelAnimationFrame(raf);
+  if (AC){ rumbleG.gain.setTargetAtTime(0, AC.currentTime, .15); rattleG.gain.setTargetAtTime(0, AC.currentTime, .1); }
+  if (navigator.vibrate) navigator.vibrate(0);
+  $("page").style.transform = "";
+  $("play").classList.remove("on"); $("play-label").textContent = "Feel it again";
+  $("room").classList.remove("playing");
+  $("play-icon").setAttribute("d", "M3 1.5v11l9-5.5z");
+  $("hud-phase").textContent = "Ready"; $("hud-phase").classList.remove("live");
+}
+$("play").addEventListener("click", () => sim ? stop() : start());
+$("room-play").addEventListener("click", () => { if (!sim) start(); });
+
+let lastVib = 0;
+function step(now){
+  if (!sim) return;
+  /* the clock starts on the first frame: a frame's timestamp can precede
+     the click that started it, and negative time has no samples */
+  if (!sim.t0) sim.t0 = now;
+  const t = Math.max(0, (now - sim.t0) / 1000), dt = Math.max(0, Math.min(.05, t - sim.last)); sim.last = t;
+  const i = Math.min(sim.N - 1, Math.floor(t * HZ));
+  const env = sim.env[i], a = sim.s[i];
+  const I = sim.I;
+  /* ground acceleration in m/s², scaled to the estimated peak */
+  const ag = a * sim.pga / 100 * (sim.motion ? 1 : 0);
+  /* the lamp: a damped pendulum driven by the ground. Real shaking carries
+     energy near a hanging lamp's own swing rate, which is why lamps swing
+     so visibly; a term at that rate, following the envelope, stands in for it */
+  const Lm = .9, g = 9.81, wn = Math.sqrt(g / Lm);
+  const res = sim.motion ? .5 * Math.sqrt(sim.pga / 100) * env * Math.sin(wn * t + 1.3) : 0;
+  lamp.w += (-(g / Lm) * Math.sin(lamp.th) - .35 * lamp.w - (ag + res) * Math.cos(lamp.th) / Lm) * dt;
+  lamp.th += lamp.w * dt;
+  if (!Number.isFinite(lamp.th)){ lamp.th = 0; lamp.w = 0; }
+  if (Math.abs(lamp.th) > .9){ lamp.th = Math.sign(lamp.th) * .9; lamp.w *= -.3; }
+  flicker = I >= 5.3 && env > .5 ? (Math.random() < .12 * (I - 5) ? .1 : 1) : 1;
+  if (I >= 6.4 && env > .7) flicker = Math.random() < .5 ? 0 : flicker;
+  /* each object: rattle, then maybe let go */
+  const gx = sim.motion ? a * sim.px : 0;
+  objs.forEach(o => {
+    if (o.free){
+      if (o.kind !== "tansu"){ o.vy += 900 * dt; o.x += o.vx * dt; o.y += o.vy * dt; o.rot += o.vr * dt; }
+      const floorY = FLOOR + (o.kind === "tansu" ? 0 : 6) - Math.min(o.w, o.h) / 2;
+      if (o.kind === "tansu"){
+        /* topples about its left foot until it lies on the floor */
+        o.rot = Math.max(-1.5708, o.rot - (1.2 + Math.abs(o.rot) * 5) * dt * 1.4);
+        const c = Math.cos(o.rot), s = Math.sin(o.rot);
+        o.x = o.px + (o.w/2) * c + (o.h/2) * s; o.y = o.py + (o.w/2) * s - (o.h/2) * c;
+        if (o.rot <= -1.5707 && !o.landed){ o.landed = true; thud(8); dust.push(...burst(o.x, FLOOR, 18)); }
+        o.vy = 0; o.vx = 0;
+      } else if (o.y >= floorY){
+        o.y = floorY; if (Math.abs(o.vy) > 80) thud(o.kind === "book" ? 1.2 : o.kind === "pot" ? 2 : .8);
+        o.vy *= -.22; o.vx *= .55; o.vr *= .4;
+        if (Math.abs(o.vy) < 30){ o.vy = 0; o.vr = 0; o.rot = Math.round(o.rot / 1.5708) * 1.5708; }
+      }
+      if (o.kind === "glass") o.slosh = 0;
+      return;
+    }
+    let jig = 0;
+    if (I >= o.rattle && env > .15) jig = (I - o.rattle + .4) * env * (Math.random() - .5) * 1.6;
+    if (o.kind === "frame"){
+      const pd = o.pend; pd.w += (-(9.81 / .12) * pd.th - 1.4 * pd.w - ag * .55 / .12) * dt * (I >= 3 ? 1 : .3); pd.th += pd.w * dt;
+      o.rot = pd.th * .4;
+    } else if (o.kind === "glass"){ o.slosh = -ag * 1.6; o.x = o.x0 + jig * .3; }
+    else if (o.kind === "tansu"){
+      if (I >= o.slide && env > .4) o.x0 += (Math.random() - .5) * 2.2 * env;
+      o.rot = jig * .004; o.x = o.x0 + jig * .6;
+    } else { o.x = o.x0 + jig * .6; o.y = o.y0 - Math.abs(jig) * .25; o.rot = jig * .025; }
+    if (I >= o.fall && env > Math.max(.3, o.trig - (I - o.fall) * .25) && sim.motion){
+      o.free = true;
+      if (o.kind === "tansu"){ o.px = o.x - o.w/2; o.py = o.y + o.h/2; o.rot = 0; o.vx = o.vy = o.vr = 0; }
+      else { o.vx = (gx >= 0 ? 1 : -1) * (30 + Math.random() * 90); o.vy = -20 - Math.random() * 60; o.vr = (Math.random() - .5) * 8; }
+    }
+  });
+  crack = I >= 5.6 && env > .7 ? Math.min(1, crack + dt * 1.6) : crack;
+  if (I >= 5.5 && env > .5 && sim.motion && Math.random() < (I - 5) * .5 * dt * 20) dust.push(...burst(60 + Math.random() * 680, 0, 3, true));
+  dust.forEach(d => { d.vy += (d.fall ? 160 : 500) * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt; });
+  dust = dust.filter(d => d.life > 0 && d.y < H + 20);
+  drawScene(t); drawTrace(t);
+  /* HUD, sound, vibration, page sway */
+  const ph = sim.ph[i];
+  $("hud-phase").textContent = PHASE[ph];
+  $("hud-phase").classList.toggle("live", ph === 2 || ph === 3);
+  $("hud-time").textContent = t.toFixed(1) + " s";
+  if (AC && $("o-sound").checked){
+    const lv = Math.pow(sim.level, 1.25);
+    rumbleG.gain.setTargetAtTime(Math.min(1.4, env * lv * 1.7 * (.6 + Math.abs(a) * .6)), AC.currentTime, .05);
+    rattleG.gain.setTargetAtTime(I >= 2.5 ? Math.min(.12, env * (I - 2.3) * .025 * Math.random()) : 0, AC.currentTime, .03);
+  } else if (AC){ rumbleG.gain.value = 0; rattleG.gain.value = 0; }
+  if ($("o-vib").checked && navigator.vibrate && I >= 1.5 && now - lastVib > 140 && env > .08){
+    navigator.vibrate(Math.round(40 + 90 * env * sim.level)); lastVib = now;
+  }
+  $("page").style.transform = $("o-page").checked && sim.motion
+    ? "translate3d(" + (a * sim.px * .5).toFixed(2) + "px," + (sim.s[Math.max(0, i - 8)] * sim.px * .15).toFixed(2) + "px,0)" : "";
+  if (t >= sim.T){ stop(); drawScene(0); return; }
+  raf = requestAnimationFrame(step);
+}
+function burst(x, y, n, fall){
+  const out = [];
+  for (let k = 0; k < n; k++) out.push({x:x + (Math.random() - .5) * 40, y, r:.8 + Math.random() * 1.8,
+    vx:(Math.random() - .5) * (fall ? 20 : 120), vy:fall ? Math.random() * 40 : -Math.random() * 160, fall, life:fall ? 3 : 1.2});
+  return out;
+}
+
+/* ── start-up ─────────────────────────────────────────────────────── */
+if (navigator.vibrate && matchMedia("(pointer: coarse)").matches) $("o-vib-l").hidden = false;
+if (REDUCED){
+  $("o-motion-l").hidden = false;
+  $("note").textContent = "Your system asks for reduced motion, so the room holds still and you get the sound, " +
+    "readout and seismogram. Tick “Show motion” to see the shaking.";
+}
+const q = new URLSearchParams(location.search);
+if (q.has("m")) S.M = Math.max(1, Math.min(9.1, +q.get("m") || 5));
+if (q.has("d")) S.d = Math.max(0, Math.min(400, Math.round(+q.get("d") || 0)));
+if (q.has("z")) S.z = Math.max(2, Math.min(150, Math.round(+q.get("z") || 10)));
+if (SOIL[q.get("g")]) S.soil = q.get("g");
+sync(); fit();
+
+/* reveal, as on the monitor */
+const items = [...document.querySelectorAll("section .sec-head, .ladder, .scale, .steps, .prose, .caveat, footer, .coda")];
+items.forEach((n, k) => { n.dataset.rv = ""; n.style.setProperty("--d", "60ms"); });
+if (REDUCED || !("IntersectionObserver" in window)) items.forEach(n => n.classList.add("in"));
+else {
+  const io = new IntersectionObserver((es) => es.forEach(en => {
+    if (en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); }
+  }), {rootMargin:"0px 0px -6% 0px", threshold:.06});
+  items.forEach(n => io.observe(n));
+}
+document.addEventListener("pointermove", (e) => {
+  const card = e.target.closest && e.target.closest(".glow");
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+  card.style.setProperty("--my", (e.clientY - r.top) + "px");
+}, {passive:true});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { palette = null; if (!sim) drawScene(0); });
+})();
+</script>
+</body>
+</html>
